@@ -52,8 +52,10 @@ function todayKey(): string {
 
 async function fetchZipBlob(dataset: Dataset, year: number): Promise<Blob> {
   assertClient();
-  const baseUrl = buildCVMUrl(dataset, year);
-  const requestToday = new Request(`${baseUrl}?day=${todayKey()}`, { cache: "no-store" as RequestCache });
+  const directUrl = buildCVMUrl(dataset, year);
+  const proxyUrl = `/api/fre/${year}`;
+  let chosen = proxyUrl;
+  const requestToday = new Request(`${chosen}?day=${todayKey()}`, { cache: "no-store" as RequestCache });
   const cache = await getCache();
   const cachedToday = await cache.match(requestToday);
   if (cachedToday) {
@@ -64,7 +66,7 @@ async function fetchZipBlob(dataset: Dataset, year: number): Promise<Blob> {
     try {
       const { Capacitor, CapacitorHttp } = await import("@capacitor/core");
       if (Capacitor && typeof Capacitor.isNativePlatform === "function" && Capacitor.isNativePlatform() && CapacitorHttp) {
-        const r = await CapacitorHttp.get({ url: baseUrl, responseType: "arraybuffer" } as any);
+        const r = await CapacitorHttp.get({ url: directUrl, responseType: "arraybuffer" } as any);
         const arrBuf: ArrayBuffer = (r as any)?.data;
         if (arrBuf) {
           const blob = new Blob([arrBuf], { type: "application/zip" });
@@ -73,9 +75,13 @@ async function fetchZipBlob(dataset: Dataset, year: number): Promise<Blob> {
         }
       }
     } catch {}
-    const resp = await fetch(baseUrl, { redirect: "follow" });
+    let resp = await fetch(proxyUrl, { redirect: "follow" });
     if (!resp.ok) {
-      const fallback = await findAnyCachedVersion(cache, baseUrl);
+      chosen = directUrl;
+      resp = await fetch(directUrl, { redirect: "follow" });
+    }
+    if (!resp.ok) {
+      const fallback = await findAnyCachedVersion(cache, directUrl);
       if (fallback) return fallback;
       throw new CVMOfflineError(`Falha ao baixar FRE ${year}: ${resp.status}`);
     }
@@ -84,7 +90,7 @@ async function fetchZipBlob(dataset: Dataset, year: number): Promise<Blob> {
     const blob = await resp.blob();
     return blob;
   } catch {
-    const fallback = await findAnyCachedVersion(cache, baseUrl);
+    const fallback = await findAnyCachedVersion(cache, directUrl);
     if (fallback) return fallback;
     throw new CVMOfflineError("Erro de rede ao baixar dados da CVM");
   }
