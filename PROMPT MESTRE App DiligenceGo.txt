@@ -1,0 +1,73 @@
+PROMPT MESTRE: App DiligenceGo
+Objetivo: Criar um aplicativo mobile focado em Android para consulta e análise de dados da CVM, otimizado para advogados de Due Diligence, utilizando Next.js (App Router), React, Shadcn UI e Capacitor.
+
+1. Identidade e Compliance
+Nome do App: DiligenceGo.
+
+Aviso Legal: Incluir no rodapé e na descrição: "O DiligenceGo é uma ferramenta independente e não possui vínculo com a Comissão de Valores Mobiliários (CVM). Os dados são extraídos do Portal de Dados Abertos oficial."
+
+Privacidade: O processamento de dados é 100% local (Client-Side). O CNPJ consultado nunca deve ser enviado para servidores externos.
+
+2. Arquitetura de Dados (Local-First)
+Fontes Oficiais:
+
+FRE: https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FRE/DADOS/
+
+PAS (Sancionador): https://dados.cvm.gov.br/dados/PAS/DADOS/
+
+Lógica de Busca: 1. O usuário insere o CNPJ. 2. O app limpa o input (remove máscara) para busca bruta. 3. O app identifica o ano atual e pergunta se quer este ano ou pode preencher outro ano anterior e baixa o arquivo .zip correspondente.
+
+Processamento de Memória (Crítico):
+
+Use JSZip para descompactar e PapaParse para leitura.
+
+Regra de Ouro: Processe um CSV por vez dentro do ZIP. Assim que filtrar as linhas do CNPJ alvo, delete o arquivo bruto da memória para evitar travamentos no Android.
+
+Encoding: Forçar obrigatoriamente ISO-8859-1 na leitura para garantir a integridade de acentos e cedilhas.
+
+3. Interface e Experiência (UI/UX)
+Dashboard de Resultados (Shadcn UI): Organize as informações em abas ou cards:
+
+Governança: Lista de diretores e acionistas (>5%).
+
+Remuneração: Tabelas de valores fixos e bônus por órgão social.
+
+Litígios: Matriz de risco (Descrição, Valor da Causa e Probabilidade de Perda).
+
+Sancionador: Cruzamento do CNPJ/Sócios com a base de Processos Administrativos Sancionadores (PAS).
+
+Botão de Ação: Botão flutuante ou fixo para "Gerar Relatório Profissional".
+
+4. Monetização e Integração Android
+Autenticação: Google Auth exclusivo (Login nativo Android).
+
+Modelo Freemium:
+
+Grátis: Nome da empresa, resumo de governança e valor total em processos (visão geral).
+
+Premium (Google Play In-App Purchases): Detalhes dos processos, valores individuais de bônus da diretoria e função de exportação.
+
+Exportação Nativa: Gerar arquivo CSV ou PDF e acionar o Share Sheet do Android para envio via WhatsApp ou E-mail.
+
+5. Performance e Robustez
+Cache Inteligente: Se o arquivo ZIP do ano vigente já foi baixado no dia, use a versão local (IndexedDB ou Cache API) em vez de novo download.
+
+Offline: Salvar o resultado final da consulta localmente para que o advogado possa ler o relatório mesmo sem internet.
+
+6. Tech Stack
+Framework: Next.js 14/15.
+
+Estilização: Tailwind CSS + Shadcn UI.
+
+Mobile Wrapper: Capacitor.js (para gerar o APK).
+
+Ícones: Lucide React.
+
+Instruções Adicionais para o Trae:
+Validar o Parsing: Crie um teste unitário simples para garantir que a string "Vila das Meninas" em um CSV ISO-8859-1 não seja corrompida durante a filtragem.
+
+Tratamento de Erros: Caso o site da CVM esteja fora do ar, exiba uma mensagem amigável e ofereça o carregamento de dados salvos em cache.
+
+Configuração de Capacitor: Gere o arquivo capacitor.config.json preparando o app para permissões de leitura/escrita de arquivos no Android.
+
+Dica para você: Ao colar isso no Trae, se ele perguntar por onde começar, diga: "Comece pela lógica de download e parsing dos arquivos da CVM em lib/cvm-parser.ts". Esse é o coração do DiligenceGo.

@@ -1,0 +1,29 @@
+{
+  "appId": "com.diligencego.app",
+  "appName": "DiligenceGo",
+  "webDir": "out",
+  "bundledWebRuntime": false,
+  "server": {
+    "cleartext": true,
+    "allowNavigation": [
+      "dados.cvm.gov.br"
+    ]
+  },
+  "plugins": {
+    "Filesystem": {
+      "android": {
+        "directory": "DOCUMENTS"
+      }
+    },
+    "Share": {},
+    "App": {}
+  },
+  "android": {
+    "includePlugins": [
+      "Filesystem",
+      "Share",
+      "App"
+    ],
+    "flavor": "capacitor"
+  }
+}
