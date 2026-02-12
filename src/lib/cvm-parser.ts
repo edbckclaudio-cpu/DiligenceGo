@@ -101,13 +101,13 @@ async function findAnyCachedVersion(cache: Cache, baseUrl: string): Promise<Blob
   return null;
 }
 
+import * as Papa from "papaparse";
 export async function parseFREByCNPJ(cnpjInput: string, year?: number): Promise<FRESummary> {
   assertClient();
   const cnpj = sanitizeCNPJ(cnpjInput);
   const targetYear = year ?? currentYear();
   const zipBlob = await fetchZipBlob("FRE", targetYear);
   const JSZip = await import("jszip");
-  const Papa = await import("papaparse");
   const zip = await JSZip.loadAsync(await zipBlob.arrayBuffer());
   const files: FREFileResult[] = [];
   const fileNames = Object.keys(zip.files).filter((f) => f.toLowerCase().endsWith(".csv"));
@@ -154,7 +154,6 @@ export async function parseFREBlobByCNPJ(cnpjInput: string, blob: Blob, year?: n
   const cnpj = sanitizeCNPJ(cnpjInput);
   const targetYear = year ?? currentYear();
   const JSZip = await import("jszip");
-  const Papa = await import("papaparse");
   const zip = await JSZip.loadAsync(await blob.arrayBuffer());
   const files: FREFileResult[] = [];
   const fileNames = Object.keys(zip.files).filter((f) => f.toLowerCase().endsWith(".csv"));
