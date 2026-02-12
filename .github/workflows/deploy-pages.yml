@@ -30,6 +30,7 @@ jobs:
       - name: Build (Next export)
         env:
           BASE_PATH: /DiligenceGo
+          NEXT_OUTPUT: export
         run: npm run build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
