@@ -1,0 +1,68 @@
+name: Android Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18.x"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static web (Next.js export)
+        env:
+          NEXT_OUTPUT: export
+        run: npm run build
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          build-tools: 34.0.0
+          components: |
+            platform-tools
+            platforms;android-34
+            build-tools;34.0.0
+
+      - name: Prepare keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p android
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/upload.keystore
+
+      - name: Build signed Release (APK & AAB)
+        working-directory: android
+        env:
+          KEYSTORE_FILE: ${{ github.workspace }}/android/upload.keystore
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_ALIAS_PASS: ${{ secrets.KEY_ALIAS_PASS }}
+        run: |
+          ./gradlew clean
+          ./gradlew assembleRelease
+          ./gradlew bundleRelease
+
+      - name: Upload Release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: DiligenceGo-release
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/bundle/release/app-release.aab
