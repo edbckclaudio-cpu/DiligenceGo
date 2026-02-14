@@ -30,9 +30,11 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 space-y-6 mx-auto max-w-4xl">
-      <header className="flex justify-between items-center">
+      <header className="flex items-center justify-between sm:flex-row flex-col gap-2">
         <h1 className="text-2xl font-bold">DiligenceGo</h1>
-        <ExportButton isPremium={true} onExport={exportarCSV} />
+        <div className="w-full sm:w-auto">
+          <ExportButton isPremium={true} onExport={exportarCSV} />
+        </div>
       </header>
 
       <SearchForm onSearch={(v) => { limparCnpj(v); consultar(); }} />

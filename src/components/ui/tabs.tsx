@@ -20,8 +20,8 @@ export function TabsTrigger({ value, children }: { value: string; children: Reac
       onClick={() => ctx.setValue(value)}
       className={
         active
-          ? "px-3 py-2 text-sm rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-          : "px-3 py-2 text-sm rounded-md hover:bg-[var(--color-primary-hover)]/20"
+          ? "px-3 py-3 sm:py-2 text-sm rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
+          : "px-3 py-3 sm:py-2 text-sm rounded-md hover:bg-[var(--color-primary-hover)]/20"
       }
       aria-pressed={active}
     >
