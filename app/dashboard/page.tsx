@@ -5,6 +5,7 @@ import { ExportButton } from "@/components/cvm/ExportButton";
 import { SearchForm } from "@/components/cvm/SearchForm";
 import { useCvmData } from "@/hooks/useCvmData";
 import { Input } from "@/components/ui/input";
+import { DebugConsole } from "@/components/debug/DebugConsole";
 
 export default function Dashboard() {
   const { cnpj, year, setYear, limparCnpj, consultar, importarZip, carregarCache, exportarCSV, zipUrl, files, loading, error, errorInfo, current } =
@@ -114,6 +115,7 @@ export default function Dashboard() {
           {groups["Sancionador"].length === 0 && <div className="text-sm text-neutral-600">Nenhum dado sancionador.</div>}
         </TabsContent>
       </Tabs>
+      <DebugConsole />
     </div>
   );
 }
