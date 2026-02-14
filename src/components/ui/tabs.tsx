@@ -18,7 +18,11 @@ export function TabsTrigger({ value, children }: { value: string; children: Reac
   return (
     <button
       onClick={() => ctx.setValue(value)}
-      className={active ? "px-3 py-2 text-sm rounded-md bg-neutral-900 text-white" : "px-3 py-2 text-sm rounded-md hover:bg-neutral-100"}
+      className={
+        active
+          ? "px-3 py-2 text-sm rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
+          : "px-3 py-2 text-sm rounded-md hover:bg-[var(--color-primary-hover)]/20"
+      }
       aria-pressed={active}
     >
       {children}
@@ -31,4 +35,3 @@ export function TabsContent({ value, children }: { value: string; children: Reac
   if (ctx.value !== value) return null;
   return <div className="mt-4">{children}</div>;
 }
-
