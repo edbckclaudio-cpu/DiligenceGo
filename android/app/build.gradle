@@ -22,15 +22,15 @@ android {
     }
     def ksFile = System.getenv("KEYSTORE_FILE")
     def ksPass = System.getenv("KEYSTORE_PASS")
-    def keyAlias = System.getenv("KEY_ALIAS")
+    def keyAliasName = System.getenv("KEY_ALIAS")
     def keyPass = System.getenv("KEY_ALIAS_PASS")
-    if (ksFile && ksPass && keyAlias && keyPass) {
+    if (ksFile && ksPass && keyAliasName && keyPass) {
         signingConfigs {
             release {
                 storeFile file(ksFile)
-                storePassword ksPass
-                keyAlias keyAlias
-                keyPassword keyPass
+                storePassword = ksPass
+                keyAlias = keyAliasName
+                keyPassword = keyPass
             }
         }
     }
@@ -64,6 +64,14 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+// Override Java version from generated capacitor.build.gradle (enforces Java 17)
+android {
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
 
 try {
     def servicesJSON = file('google-services.json')

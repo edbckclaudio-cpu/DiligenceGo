@@ -7,7 +7,7 @@ import { useCvmData } from "@/hooks/useCvmData";
 import { Input } from "@/components/ui/input";
 
 export default function Dashboard() {
-  const { cnpj, year, setYear, limparCnpj, consultar, importarZip, carregarCache, exportarCSV, zipUrl, files, loading, error, current } =
+  const { cnpj, year, setYear, limparCnpj, consultar, importarZip, carregarCache, exportarCSV, zipUrl, files, loading, error, errorInfo, current } =
     useCvmData();
 
   function classifyFile(name: string): "Governança" | "Litígios" | "Sancionador" | "Remuneração" {
@@ -56,7 +56,16 @@ export default function Dashboard() {
       {error && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-2 rounded-md">
           <div className="flex justify-between items-center">
-            <span>{error}</span>
+            <div>
+              <div>{error}</div>
+              {errorInfo && (
+                <div className="text-xs text-neutral-600 mt-1">
+                  {typeof errorInfo.status !== "undefined" && <span>Status: {errorInfo.status} </span>}
+                  {errorInfo.url && <span>URL: {errorInfo.url} </span>}
+                  {errorInfo.message && <span>Detalhe: {errorInfo.message}</span>}
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-3">
               <a href={zipUrl()} target="_blank" rel="noreferrer" className="underline">Baixar ZIP</a>
               <label className="underline cursor-pointer">

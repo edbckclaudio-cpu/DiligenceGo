@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { currentYear, freZipUrl, loadReportLocal, mapErrorToUserMessage, parseFREBlobByCNPJ, parseFREByCNPJ, sanitizeCNPJ } from "@/lib/cvm-parser";
+import { CVMOfflineError, CVMUnavailableError } from "@/lib/cvm-parser";
 
 type Row = string[];
 
@@ -9,17 +10,24 @@ export function useCvmData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<{ file: string; rows: Row[] }[]>([]);
+  const [errorInfo, setErrorInfo] = useState<{ status?: number; url?: string; message?: string } | null>(null);
   const current = useMemo(() => currentYear(), []);
 
   async function consultar() {
     setLoading(true);
     setError(null);
+    setErrorInfo(null);
     try {
       const y = year ?? current;
       const summary = await parseFREByCNPJ(cnpj, y);
       setFiles(summary.files);
     } catch (e) {
       setError(mapErrorToUserMessage(e));
+      if (e instanceof CVMOfflineError || e instanceof CVMUnavailableError) {
+        setErrorInfo({ status: (e as any).status, url: (e as any).url, message: String((e as any).message || "") });
+      } else {
+        setErrorInfo({ message: String(e) });
+      }
     } finally {
       setLoading(false);
     }
@@ -39,12 +47,18 @@ export function useCvmData() {
   async function importarZip(file: File) {
     setLoading(true);
     setError(null);
+    setErrorInfo(null);
     try {
       const y = year ?? current;
       const summary = await parseFREBlobByCNPJ(cnpj, file, y);
       setFiles(summary.files);
     } catch (e) {
       setError(mapErrorToUserMessage(e));
+      if (e instanceof CVMOfflineError || e instanceof CVMUnavailableError) {
+        setErrorInfo({ status: (e as any).status, url: (e as any).url, message: String((e as any).message || "") });
+      } else {
+        setErrorInfo({ message: String(e) });
+      }
     } finally {
       setLoading(false);
     }
@@ -75,6 +89,5 @@ export function useCvmData() {
     return freZipUrl(year ?? current);
   }
 
-  return { cnpj, year, setYear, limparCnpj, consultar, importarZip, carregarCache, exportarCSV, zipUrl, files, loading, error, current };
+  return { cnpj, year, setYear, limparCnpj, consultar, importarZip, carregarCache, exportarCSV, zipUrl, files, loading, error, errorInfo, current };
 }
-

@@ -15,12 +15,14 @@
         "directory": "DOCUMENTS"
       }
     },
+    "Http": {},
     "Share": {},
     "App": {}
   },
   "android": {
     "includePlugins": [
       "Filesystem",
+      "Http",
       "Share",
       "App"
     ],

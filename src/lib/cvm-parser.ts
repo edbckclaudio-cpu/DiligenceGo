@@ -3,16 +3,24 @@ export type FREFileResult = { file: string; rows: string[][] };
 export type FRESummary = { cnpj: string; year: number; files: FREFileResult[] };
 
 export class CVMOfflineError extends Error {
-  constructor(message = "Serviço da CVM indisponível no momento") {
+  status?: number;
+  url?: string;
+  constructor(message = "Serviço da CVM indisponível no momento", status?: number, url?: string) {
     super(message);
     this.name = "CVMOfflineError";
+    this.status = status;
+    this.url = url;
   }
 }
 
 export class CVMUnavailableError extends Error {
-  constructor(message = "Conjunto de dados indisponível no momento") {
+  status?: number;
+  url?: string;
+  constructor(message = "Conjunto de dados indisponível no momento", status?: number, url?: string) {
     super(message);
     this.name = "CVMUnavailableError";
+    this.status = status;
+    this.url = url;
   }
 }
 
@@ -22,6 +30,26 @@ export function sanitizeCNPJ(input: string): string {
 
 export function currentYear(): number {
   return new Date().getFullYear();
+}
+
+function base64ToUint8Array(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function decodeLatin1(buf: ArrayBuffer): string {
+  try {
+    const dec = new TextDecoder("iso-8859-1");
+    return dec.decode(buf as ArrayBuffer);
+  } catch {
+    const bytes = new Uint8Array(buf as ArrayBuffer);
+    let s = "";
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return s;
+  }
 }
 
 function assertClient(): void {
@@ -55,44 +83,66 @@ async function fetchZipBlob(dataset: Dataset, year: number): Promise<Blob> {
   const directUrl = buildCVMUrl(dataset, year);
   const proxyUrl = `/api/fre/${year}`;
   let chosen = proxyUrl;
+  console.log("cvm:fetchZipBlob:start", { dataset, year, directUrl, proxyUrl });
   const requestToday = new Request(`${chosen}?day=${todayKey()}`, { cache: "no-store" as RequestCache });
   const cache = await getCache();
   const cachedToday = await cache.match(requestToday);
   if (cachedToday) {
     const blob = await cachedToday.blob();
+    console.log("cvm:fetchZipBlob:cache-hit", { url: requestToday.url, size: blob.size });
     return blob;
   }
   try {
+    let isNative = false;
+    let hasCapHttp = false;
     try {
-      const { Capacitor, CapacitorHttp } = await import("@capacitor/core");
-      if (Capacitor && typeof Capacitor.isNativePlatform === "function" && Capacitor.isNativePlatform() && CapacitorHttp) {
-        const r = await CapacitorHttp.get({ url: directUrl, responseType: "arraybuffer" } as any);
-        const arrBuf: ArrayBuffer = (r as any)?.data;
-        if (arrBuf) {
-          const blob = new Blob([arrBuf], { type: "application/zip" });
+      const { Capacitor } = await import("@capacitor/core");
+      const { Http } = await import("@capacitor/http");
+      isNative = !!(Capacitor && typeof Capacitor.isNativePlatform === "function" && Capacitor.isNativePlatform());
+      hasCapHttp = !!Http;
+      if (isNative && hasCapHttp) {
+        const r = await (Http as any).get({ url: directUrl, responseType: "arraybuffer" });
+        const data = (r as any)?.data;
+        if (data) {
+          const buf: ArrayBuffer = data instanceof ArrayBuffer ? data : (base64ToUint8Array(String(data)).buffer as ArrayBuffer);
+          const blob = new Blob([buf], { type: "application/zip" });
           await cache.put(requestToday, new Response(blob));
+          console.log("cvm:fetchZipBlob:native-ok", { url: directUrl, size: blob.size });
           return blob;
         }
       }
     } catch {}
-    let resp = await fetch(proxyUrl, { redirect: "follow" });
-    if (!resp.ok) {
+    const isStaticExport = typeof location !== "undefined" && (location.protocol === "capacitor:" || location.protocol === "file:");
+    let resp: Response;
+    if (isNative || isStaticExport) {
       chosen = directUrl;
+       console.log("cvm:fetchZipBlob:fetch-direct", { url: chosen });
       resp = await fetch(directUrl, { redirect: "follow" });
+    } else {
+      console.log("cvm:fetchZipBlob:fetch-proxy", { url: proxyUrl });
+      resp = await fetch(proxyUrl, { redirect: "follow" });
+      if (!resp.ok) {
+        chosen = directUrl;
+        console.log("cvm:fetchZipBlob:fallback-direct", { url: chosen, status: resp.status });
+        resp = await fetch(directUrl, { redirect: "follow" });
+      }
     }
     if (!resp.ok) {
       const fallback = await findAnyCachedVersion(cache, directUrl);
       if (fallback) return fallback;
-      throw new CVMOfflineError(`Falha ao baixar FRE ${year}: ${resp.status}`);
+      console.log("cvm:fetchZipBlob:http-error", { url: chosen, status: resp.status });
+      throw new CVMOfflineError(`Falha ao baixar FRE ${year}: ${resp.status}`, resp.status, chosen);
     }
     const clone = resp.clone();
     await cache.put(requestToday, clone);
     const blob = await resp.blob();
+    console.log("cvm:fetchZipBlob:http-ok", { url: chosen, size: blob.size });
     return blob;
-  } catch {
+  } catch (err: any) {
     const fallback = await findAnyCachedVersion(cache, directUrl);
     if (fallback) return fallback;
-    throw new CVMOfflineError("Erro de rede ao baixar dados da CVM");
+    console.log("cvm:fetchZipBlob:network-error", { url: directUrl, error: String(err && err.message || err) });
+    throw new CVMOfflineError("Erro de rede ao baixar dados da CVM", undefined, directUrl);
   }
 }
 
@@ -112,18 +162,20 @@ export async function parseFREByCNPJ(cnpjInput: string, year?: number): Promise<
   assertClient();
   const cnpj = sanitizeCNPJ(cnpjInput);
   const targetYear = year ?? currentYear();
+  console.log("cvm:parse:start", { cnpj, year: targetYear });
   const zipBlob = await fetchZipBlob("FRE", targetYear);
+  console.log("cvm:parse:zip", { size: zipBlob.size });
   const JSZip = await import("jszip");
   const zip = await JSZip.loadAsync(await zipBlob.arrayBuffer());
   const files: FREFileResult[] = [];
   const fileNames = Object.keys(zip.files).filter((f) => f.toLowerCase().endsWith(".csv"));
+  console.log("cvm:parse:entries", { count: fileNames.length });
   for (const name of fileNames) {
     const file = zip.file(name);
     if (!file) continue;
     const buf = await file.async("arraybuffer");
     try {
-      const decoder = new TextDecoder("iso-8859-1");
-      const csvText = decoder.decode(buf as ArrayBuffer);
+      const csvText = decodeLatin1(buf as ArrayBuffer);
       const parsed = Papa.parse<string[]>(csvText, {
         delimiter: ",",
         newline: "\n",
@@ -143,6 +195,7 @@ export async function parseFREByCNPJ(cnpjInput: string, year?: number): Promise<
         }
       }
       files.push({ file: name, rows: filtered });
+      console.log("cvm:parse:file", { name, rows: filtered.length });
       (parsed as unknown) = null as unknown as any;
       (csvText as unknown) = "" as unknown as any;
       (buf as unknown) = null as unknown as any;
@@ -152,6 +205,7 @@ export async function parseFREByCNPJ(cnpjInput: string, year?: number): Promise<
   try {
     saveReportLocal(summary);
   } catch {}
+  console.log("cvm:parse:done", { files: files.length });
   return summary;
 }
 
@@ -159,17 +213,18 @@ export async function parseFREBlobByCNPJ(cnpjInput: string, blob: Blob, year?: n
   assertClient();
   const cnpj = sanitizeCNPJ(cnpjInput);
   const targetYear = year ?? currentYear();
+  console.log("cvm:parse-blob:start", { cnpj, year: targetYear, size: blob.size });
   const JSZip = await import("jszip");
   const zip = await JSZip.loadAsync(await blob.arrayBuffer());
   const files: FREFileResult[] = [];
   const fileNames = Object.keys(zip.files).filter((f) => f.toLowerCase().endsWith(".csv"));
+  console.log("cvm:parse-blob:entries", { count: fileNames.length });
   for (const name of fileNames) {
     const file = zip.file(name);
     if (!file) continue;
     const buf = await file.async("arraybuffer");
     try {
-      const decoder = new TextDecoder("iso-8859-1");
-      const csvText = decoder.decode(buf as ArrayBuffer);
+      const csvText = decodeLatin1(buf as ArrayBuffer);
       const parsed = Papa.parse<string[]>(csvText, {
         delimiter: ",",
         newline: "\n",
@@ -189,6 +244,7 @@ export async function parseFREBlobByCNPJ(cnpjInput: string, blob: Blob, year?: n
         }
       }
       files.push({ file: name, rows: filtered });
+      console.log("cvm:parse-blob:file", { name, rows: filtered.length });
       (parsed as unknown) = null as unknown as any;
       (csvText as unknown) = "" as unknown as any;
       (buf as unknown) = null as unknown as any;
@@ -198,6 +254,7 @@ export async function parseFREBlobByCNPJ(cnpjInput: string, blob: Blob, year?: n
   try {
     saveReportLocal(summary);
   } catch {}
+  console.log("cvm:parse-blob:done", { files: files.length });
   return summary;
 }
 
