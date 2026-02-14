@@ -82,8 +82,9 @@ async function fetchZipBlob(dataset: Dataset, year: number): Promise<Blob> {
   assertClient();
   const directUrl = buildCVMUrl(dataset, year);
   const proxyUrl = `/api/fre/${year}`;
-  let chosen = proxyUrl;
-  console.log("cvm:fetchZipBlob:start", { dataset, year, directUrl, proxyUrl });
+  const isStaticExport = typeof location !== "undefined" && (location.protocol === "capacitor:" || location.protocol === "file:");
+  let chosen = isStaticExport ? directUrl : proxyUrl;
+  console.log("cvm:fetchZipBlob:start", { dataset, year, directUrl, proxyUrl, chosen });
   const requestToday = new Request(`${chosen}?day=${todayKey()}`, { cache: "no-store" as RequestCache });
   const cache = await getCache();
   const cachedToday = await cache.match(requestToday);
@@ -102,17 +103,17 @@ async function fetchZipBlob(dataset: Dataset, year: number): Promise<Blob> {
       hasCapHttp = !!Http;
       if (isNative && hasCapHttp) {
         const r = await (Http as any).get({ url: directUrl, responseType: "arraybuffer" });
+        const status = (r as any)?.status ?? 200;
         const data = (r as any)?.data;
-        if (data) {
+        if (data && status >= 200 && status < 300) {
           const buf: ArrayBuffer = data instanceof ArrayBuffer ? data : (base64ToUint8Array(String(data)).buffer as ArrayBuffer);
           const blob = new Blob([buf], { type: "application/zip" });
-          await cache.put(requestToday, new Response(blob));
+          await cache.put(new Request(`${directUrl}?day=${todayKey()}`, { cache: "no-store" as RequestCache }), new Response(blob));
           console.log("cvm:fetchZipBlob:native-ok", { url: directUrl, size: blob.size });
           return blob;
         }
       }
     } catch {}
-    const isStaticExport = typeof location !== "undefined" && (location.protocol === "capacitor:" || location.protocol === "file:");
     let resp: Response;
     if (isNative || isStaticExport) {
       chosen = directUrl;
@@ -128,6 +129,36 @@ async function fetchZipBlob(dataset: Dataset, year: number): Promise<Blob> {
       }
     }
     if (!resp.ok) {
+      // Se for ano 2026, tentar silenciosamente 2025
+      const targetFallbackYear = year === 2026 ? 2025 : undefined;
+      if (dataset === "FRE" && typeof targetFallbackYear !== "undefined") {
+        const prevUrl = buildCVMUrl(dataset, targetFallbackYear);
+        try {
+          if (isNative && hasCapHttp) {
+            const { Http } = await import("@capacitor/http");
+            const rr = await (Http as any).get({ url: prevUrl, responseType: "arraybuffer" });
+            const status2 = (rr as any)?.status ?? 200;
+            const data2 = (rr as any)?.data;
+            if (data2 && status2 >= 200 && status2 < 300) {
+              const buf2: ArrayBuffer = data2 instanceof ArrayBuffer ? data2 : (base64ToUint8Array(String(data2)).buffer as ArrayBuffer);
+              const blob2 = new Blob([buf2], { type: "application/zip" });
+              await cache.put(new Request(`${prevUrl}?day=${todayKey()}`, { cache: "no-store" as RequestCache }), new Response(blob2));
+              console.log("cvm:fetchZipBlob:native-fallback-ok", { url: prevUrl, size: blob2.size });
+              return blob2;
+            }
+          }
+        } catch {}
+        try {
+          const resp2 = await fetch(prevUrl, { redirect: "follow" });
+          if (resp2.ok) {
+            const clone2 = resp2.clone();
+            await cache.put(new Request(`${prevUrl}?day=${todayKey()}`, { cache: "no-store" as RequestCache }), clone2);
+            const blob2 = await resp2.blob();
+            console.log("cvm:fetchZipBlob:http-fallback-ok", { url: prevUrl, size: blob2.size });
+            return blob2;
+          }
+        } catch {}
+      }
       const fallback = await findAnyCachedVersion(cache, directUrl);
       if (fallback) return fallback;
       console.log("cvm:fetchZipBlob:http-error", { url: chosen, status: resp.status });

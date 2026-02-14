@@ -16,6 +16,7 @@
       }
     },
     "Http": {},
+    "Browser": {},
     "Share": {},
     "App": {}
   },
@@ -23,6 +24,7 @@
     "includePlugins": [
       "Filesystem",
       "Http",
+      "Browser",
       "Share",
       "App"
     ],

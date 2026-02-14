@@ -28,6 +28,16 @@ export default function Dashboard() {
     groups[classifyFile(f.file)].push(f);
   }
 
+  async function abrirZipExterno() {
+    const url = zipUrl();
+    try {
+      const { Browser } = await import("@capacitor/browser");
+      await (Browser as any).open({ url });
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  }
+
   return (
     <div className="p-4 space-y-6 mx-auto max-w-4xl">
       <header className="flex items-center justify-between sm:flex-row flex-col gap-2">
@@ -67,7 +77,7 @@ export default function Dashboard() {
               )}
             </div>
             <div className="flex items-center gap-3">
-              <a href={zipUrl()} target="_blank" rel="noreferrer" className="underline">Baixar ZIP</a>
+              <button onClick={abrirZipExterno} className="underline">Baixar ZIP</button>
               <label className="underline cursor-pointer">
                 Importar ZIP
                 <input type="file" accept=".zip" onChange={(e) => e.target.files && importarZip(e.target.files[0])} className="hidden" />
