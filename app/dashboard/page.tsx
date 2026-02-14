@@ -35,15 +35,9 @@ export default function Dashboard() {
         <ExportButton isPremium={true} onExport={exportarCSV} />
       </header>
 
-      <SearchForm onSearch={() => consultar()} />
+      <SearchForm onSearch={(v) => { limparCnpj(v); consultar(); }} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Input
-          value={cnpj}
-          onChange={(e) => limparCnpj(e.target.value)}
-          placeholder="CNPJ"
-          className="bg-white"
-        />
         <select
           value={String(year ?? current)}
           onChange={(e) => setYear(Number(e.target.value))}
@@ -55,13 +49,6 @@ export default function Dashboard() {
           <option value={current - 3}>{current - 3}</option>
           <option value={current - 4}>{current - 4}</option>
         </select>
-        <button
-          onClick={consultar}
-          disabled={loading || !cnpj}
-          className="rounded-md bg-neutral-900 text-white px-3 py-2 disabled:opacity-50"
-        >
-          {loading ? "Consultando..." : "Consultar"}
-        </button>
       </div>
 
       {error && (
@@ -109,4 +96,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
