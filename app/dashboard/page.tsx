@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataCard } from "@/components/cvm/DataCard";
 import { ExportButton } from "@/components/cvm/ExportButton";
@@ -15,6 +15,16 @@ export default function Dashboard() {
   const [pendingDigits, setPendingDigits] = useState("");
   const [formatPickerOpen, setFormatPickerOpen] = useState(false);
   const [channel, setChannel] = useState<"email" | "whatsapp" | null>(null);
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setDrawerOpen(false);
+        setFormatPickerOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   function classifyFile(name: string): "Governança" | "Litígios" | "Sancionador" | "Remuneração" {
     const n = name.toLowerCase();
@@ -71,17 +81,22 @@ export default function Dashboard() {
       await clearAllMemory();
     } catch {}
     setDrawerOpen(false);
+    setFormatPickerOpen(false);
     limparCnpj(pendingDigits);
     consultar();
+    setPendingDigits("");
+    setChannel(null);
   }
 
   function sendEmailThenSearch() {
     setChannel("email");
+    setDrawerOpen(false);
     setFormatPickerOpen(true);
   }
 
   function sendWhatsAppThenSearch() {
     setChannel("whatsapp");
+    setDrawerOpen(false);
     setFormatPickerOpen(true);
   }
 
@@ -167,14 +182,15 @@ export default function Dashboard() {
 
       {drawerOpen && (
         <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl border-t p-4 space-y-4">
+          <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setDrawerOpen(false)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl border-t p-4 space-y-4 z-50">
             <div className="text-base font-semibold">Enviar a consulta anterior e iniciar nova?</div>
             <div className="text-sm text-neutral-600">Escolha uma opção para compartilhar a anterior e continuaremos com a nova consulta.</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button onClick={sendEmailThenSearch} className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]">Enviar por E-mail</button>
               <button onClick={sendWhatsAppThenSearch} className="px-3 py-2 rounded-md bg-green-600 text-white">Enviar por WhatsApp</button>
               <button onClick={discardAndSearch} className="px-3 py-2 rounded-md border">Descartar e consultar</button>
+              <button onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-md border">Fechar</button>
             </div>
           </div>
         </div>
@@ -182,8 +198,8 @@ export default function Dashboard() {
 
       {formatPickerOpen && (
         <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setFormatPickerOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl border-t p-4 space-y-4">
+          <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setFormatPickerOpen(false)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl border-t p-4 space-y-4 z-50">
             <div className="text-base font-semibold">Formato de envio</div>
             <div className="text-sm text-neutral-600">Deseja enviar em texto no corpo ou em tabela (.csv/.txt)?</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -228,6 +244,12 @@ export default function Dashboard() {
                 className="px-3 py-2 rounded-md border"
               >
                 Tabela (.txt)
+              </button>
+              <button
+                onClick={() => setFormatPickerOpen(false)}
+                className="px-3 py-2 rounded-md border"
+              >
+                Fechar
               </button>
             </div>
           </div>
