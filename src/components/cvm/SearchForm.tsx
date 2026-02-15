@@ -20,16 +20,6 @@ export function SearchForm({ onSearch }: { onSearch: (cnpj: string) => void }) {
     }
     return s;
   }, [digits]);
-  const fullMask = useMemo(() => {
-    const g = [2, 3, 3, 4, 2];
-    const sep = [".", ".", "/", "-"];
-    let s = "";
-    for (let idx = 0; idx < g.length; idx++) {
-      s += "0".repeat(g[idx]);
-      if (idx < sep.length) s += sep[idx];
-    }
-    return s;
-  }, []);
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const onlyDigits = e.target.value.replace(/\D+/g, "");
     setDigits(onlyDigits.slice(0, 14));
@@ -41,15 +31,11 @@ export function SearchForm({ onSearch }: { onSearch: (cnpj: string) => void }) {
         <div className="relative flex-1">
           <Input
             placeholder="00.000.000/0001-00"
-            className="bg-white text-transparent caret-black font-mono h-10"
+            className="bg-white font-mono h-10"
             value={formatted}
             onChange={onChange}
             inputMode="numeric"
           />
-          <div className="absolute inset-0 pointer-events-none flex items-center px-3">
-            <span className="font-mono text-slate-900">{formatted}</span>
-            <span className="font-mono text-slate-400">{fullMask.slice(formatted.length)}</span>
-          </div>
         </div>
         <Button onClick={() => onSearch(digits)} className="w-full sm:w-auto" disabled={!digits}>
           <Search className="w-4 h-4 mr-2" />
