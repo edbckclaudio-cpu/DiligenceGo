@@ -5,7 +5,15 @@
  export default function Home() {
    const router = useRouter();
    useEffect(() => {
-     router.replace("/dashboard");
+     try {
+       if (typeof window !== "undefined") {
+         if (window.location.pathname !== "/dashboard") {
+           window.location.assign("/dashboard");
+           return;
+         }
+       }
+       router.replace("/dashboard");
+     } catch {}
    }, [router]);
    return (
      <div className="p-4 mx-auto max-w-4xl">
