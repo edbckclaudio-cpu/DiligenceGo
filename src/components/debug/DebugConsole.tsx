@@ -22,16 +22,16 @@
        console.log = (...args: any[]) => {
          const text = args.map(fmtArg).join(" ");
          setEntries((prev) => {
-           const next: LogEntry[] = [...prev, { ts: Date.now(), level: "log", text }];
-           return next.slice(-100);
+          const next: LogEntry[] = [...prev, { ts: Date.now(), level: "log", text }];
+          return next.slice(-50);
          });
          originals.current!.log(...args);
        };
        console.error = (...args: any[]) => {
          const text = args.map(fmtArg).join(" ");
          setEntries((prev) => {
-           const next: LogEntry[] = [...prev, { ts: Date.now(), level: "error", text }];
-           return next.slice(-100);
+          const next: LogEntry[] = [...prev, { ts: Date.now(), level: "error", text }];
+          return next.slice(-50);
          });
          originals.current!.error(...args);
        };
@@ -44,8 +44,8 @@
      };
    }, []);
  
-   const last10 = entries.slice(-10);
-   const text = last10
+  const last50 = entries.slice(-50);
+  const text = last50
      .map((e) => {
        const d = new Date(e.ts).toISOString();
        return `[${d}] ${e.level.toUpperCase()}: ${e.text}`;

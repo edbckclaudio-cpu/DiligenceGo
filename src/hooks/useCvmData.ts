@@ -18,8 +18,13 @@ export function useCvmData() {
     setError(null);
     setErrorInfo(null);
     try {
+      const s = sanitizeCNPJ(cnpj);
+      if (!s || s.length !== 14) {
+        setError("Informe um CNPJ válido (14 dígitos).");
+        return;
+      }
       const y = year ?? current;
-      const summary = await parseFREByCNPJ(cnpj, y);
+      const summary = await parseFREByCNPJ(s, y);
       setFiles(summary.files);
     } catch (e) {
       setError(mapErrorToUserMessage(e));
@@ -49,8 +54,13 @@ export function useCvmData() {
     setError(null);
     setErrorInfo(null);
     try {
+      const s = sanitizeCNPJ(cnpj);
+      if (!s || s.length !== 14) {
+        setError("Informe um CNPJ válido (14 dígitos).");
+        return;
+      }
       const y = year ?? current;
-      const summary = await parseFREBlobByCNPJ(cnpj, file, y);
+      const summary = await parseFREBlobByCNPJ(s, file, y);
       setFiles(summary.files);
     } catch (e) {
       setError(mapErrorToUserMessage(e));

@@ -1,15 +1,20 @@
 "use client";
+import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataCard } from "@/components/cvm/DataCard";
 import { ExportButton } from "@/components/cvm/ExportButton";
 import { SearchForm } from "@/components/cvm/SearchForm";
 import { useCvmData } from "@/hooks/useCvmData";
 import { Input } from "@/components/ui/input";
-import { DebugConsole } from "@/components/debug/DebugConsole";
+import { clearAllMemory } from "@/lib/cvm-parser";
 
 export default function Dashboard() {
   const { cnpj, year, setYear, limparCnpj, consultar, importarZip, carregarCache, exportarCSV, zipUrl, files, loading, error, errorInfo, current } =
     useCvmData();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [pendingDigits, setPendingDigits] = useState("");
+  const [formatPickerOpen, setFormatPickerOpen] = useState(false);
+  const [channel, setChannel] = useState<"email" | "whatsapp" | null>(null);
 
   function classifyFile(name: string): "Governança" | "Litígios" | "Sancionador" | "Remuneração" {
     const n = name.toLowerCase();
@@ -39,16 +44,60 @@ export default function Dashboard() {
     }
   }
 
+  const prevSummaryText = useMemo(() => {
+    const totalRows = files.reduce((acc, f) => acc + f.rows.length, 0);
+    const lines: string[] = [];
+    lines.push(`Relatório DiligenceGo`);
+    lines.push(`CNPJ: ${cnpj}`);
+    lines.push(`Ano: ${year ?? current}`);
+    lines.push(`Arquivos: ${files.length}`);
+    lines.push(`Linhas: ${totalRows}`);
+    return lines.join("\n");
+  }, [files, cnpj, year, current]);
+
+  function handleSearchRequest(digits: string) {
+    const only = digits.replace(/\D+/g, "");
+    if (files.length > 0 && only !== cnpj) {
+      setPendingDigits(only);
+      setDrawerOpen(true);
+      return;
+    }
+    limparCnpj(digits);
+    consultar();
+  }
+
+  async function proceedNewSearch() {
+    try {
+      await clearAllMemory();
+    } catch {}
+    setDrawerOpen(false);
+    limparCnpj(pendingDigits);
+    consultar();
+  }
+
+  function sendEmailThenSearch() {
+    setChannel("email");
+    setFormatPickerOpen(true);
+  }
+
+  function sendWhatsAppThenSearch() {
+    setChannel("whatsapp");
+    setFormatPickerOpen(true);
+  }
+
+  function discardAndSearch() {
+    proceedNewSearch();
+  }
+
   return (
     <div className="p-4 space-y-6 mx-auto max-w-4xl">
-      <header className="flex items-center justify-between sm:flex-row flex-col gap-2">
-        <h1 className="text-2xl font-bold">DiligenceGo</h1>
+      <div className="flex items-center justify-end">
         <div className="w-full sm:w-auto">
           <ExportButton isPremium={true} onExport={exportarCSV} />
         </div>
-      </header>
+      </div>
 
-      <SearchForm onSearch={(v) => { limparCnpj(v); consultar(); }} />
+      <SearchForm onSearch={(v) => handleSearchRequest(v)} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <select
@@ -115,7 +164,124 @@ export default function Dashboard() {
           {groups["Sancionador"].length === 0 && <div className="text-sm text-neutral-600">Nenhum dado sancionador.</div>}
         </TabsContent>
       </Tabs>
-      <DebugConsole />
+
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl border-t p-4 space-y-4">
+            <div className="text-base font-semibold">Enviar a consulta anterior e iniciar nova?</div>
+            <div className="text-sm text-neutral-600">Escolha uma opção para compartilhar a anterior e continuaremos com a nova consulta.</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button onClick={sendEmailThenSearch} className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]">Enviar por E-mail</button>
+              <button onClick={sendWhatsAppThenSearch} className="px-3 py-2 rounded-md bg-green-600 text-white">Enviar por WhatsApp</button>
+              <button onClick={discardAndSearch} className="px-3 py-2 rounded-md border">Descartar e consultar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {formatPickerOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setFormatPickerOpen(false)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl border-t p-4 space-y-4">
+            <div className="text-base font-semibold">Formato de envio</div>
+            <div className="text-sm text-neutral-600">Deseja enviar em texto no corpo ou em tabela (.csv/.txt)?</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                onClick={() => {
+                  setFormatPickerOpen(false);
+                  if (channel === "email") {
+                    const subject = `DiligenceGo relatório ${cnpj} ${year ?? current}`;
+                    const mail = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(prevSummaryText)}`;
+                    try { window.location.href = mail; } catch {}
+                    proceedNewSearch();
+                  } else if (channel === "whatsapp") {
+                    const url = `https://wa.me/?text=${encodeURIComponent(prevSummaryText)}`;
+                    try { window.open(url, "_blank", "noopener,noreferrer"); } catch {}
+                    proceedNewSearch();
+                  }
+                }}
+                className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
+              >
+                Texto (corpo)
+              </button>
+              <button
+                onClick={async () => {
+                  setFormatPickerOpen(false);
+                  const csvContent = buildDelimitedContent(files as any, ";");
+                  const fname = `DiligenceGo_${cnpj}_${year ?? current}.csv`;
+                  await shareFile(csvContent, "text/csv", fname);
+                  proceedNewSearch();
+                }}
+                className="px-3 py-2 rounded-md bg-neutral-900 text-white"
+              >
+                Tabela (.csv)
+              </button>
+              <button
+                onClick={async () => {
+                  setFormatPickerOpen(false);
+                  const txtContent = buildDelimitedContent(files as any, ";");
+                  const fname = `DiligenceGo_${cnpj}_${year ?? current}.txt`;
+                  await shareFile(txtContent, "text/plain", fname);
+                  proceedNewSearch();
+                }}
+                className="px-3 py-2 rounded-md border"
+              >
+                Tabela (.txt)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function buildDelimitedContent(files: any[], fallbackDelim: string): string {
+  const lines: string[] = [];
+  for (const f of files) {
+    const delim = (f?.delimiter as string) || fallbackDelim;
+    const headers = (f?.headers as string[]) || [];
+    lines.push(`# arquivo: ${String(f.file)}`);
+    if (headers.length > 0) {
+      lines.push(headers.map((h) => String(h)).join(delim));
+    }
+    for (const r of f.rows as string[][]) {
+      lines.push(r.map((c) => String(c)).join(delim));
+    }
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
+async function shareFile(content: string, mime: string, filename: string): Promise<void> {
+  try {
+    const { Filesystem } = await import("@capacitor/filesystem");
+    const { Share } = await import("@capacitor/share");
+    const base64 = btoa(unescape(encodeURIComponent(content)));
+    await (Filesystem as any).writeFile({
+      path: filename,
+      data: base64,
+      directory: "DOCUMENTS",
+      encoding: "base64",
+    });
+    const uriRes = await (Filesystem as any).getUri({ path: filename, directory: "DOCUMENTS" });
+    const uri = (uriRes as any)?.uri || "";
+    await (Share as any).share({ title: filename, text: filename, url: uri, dialogTitle: "Compartilhar arquivo" });
+    return;
+  } catch {}
+  try {
+    const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+    const url = URL.createObjectURL(blob);
+    if (navigator.share) {
+      await navigator.share({ title: filename, text: filename, url });
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {}
 }

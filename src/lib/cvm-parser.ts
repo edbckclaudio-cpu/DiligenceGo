@@ -1,5 +1,5 @@
 export type Dataset = "FRE" | "PAS";
-export type FREFileResult = { file: string; rows: string[][] };
+export type FREFileResult = { file: string; rows: string[][]; headers?: string[]; delimiter?: string };
 export type FRESummary = { cnpj: string; year: number; files: FREFileResult[] };
 
 export class CVMOfflineError extends Error {
@@ -52,6 +52,52 @@ function decodeLatin1(buf: ArrayBuffer): string {
   }
 }
 
+function detectDelimiter(s: string): string {
+  const sample = s.slice(0, 4000);
+  const count = (ch: string) => (sample.match(new RegExp(`\\${ch}`, "g")) || []).length;
+  const cSemi = count(";");
+  const cComma = count(",");
+  const cTab = count("\t");
+  const candidates = [
+    { ch: ";", n: cSemi },
+    { ch: ",", n: cComma },
+    { ch: "\t", n: cTab },
+  ].sort((a, b) => b.n - a.n);
+  return candidates[0].n > 0 ? candidates[0].ch : ";";
+}
+
+function normHeader(s: string): string {
+  const noAccents = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return noAccents.replace(/[_\-]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+const CNPJ_HEADER_ALIASES = [
+  "cnpj",
+  "cnpj cia",
+  "cnpj companhia",
+  "cnpjcia",
+  "cnpjcompanhia",
+];
+
+function findCnpjColumns(headers: string[], delim: string): number[] {
+  const n = headers.map((h) => normHeader(h));
+  const idx: number[] = [];
+  for (let i = 0; i < n.length; i++) {
+    const h = n[i];
+    if (h.includes("cnpj")) {
+      idx.push(i);
+      continue;
+    }
+    for (const a of CNPJ_HEADER_ALIASES) {
+      if (h === a) {
+        idx.push(i);
+        break;
+      }
+    }
+  }
+  return idx;
+}
+
 function assertClient(): void {
   if (typeof window === "undefined") {
     throw new Error("Este módulo deve ser usado no client (browser).");
@@ -74,6 +120,18 @@ async function getCache(): Promise<Cache> {
   return caches.open("diligencego-zip-cache");
 }
 
+async function purgeZipCache(): Promise<void> {
+  assertClient();
+  try {
+    const cache = await getCache();
+    const keys = await cache.keys();
+    await Promise.all(keys.map((req) => cache.delete(req)));
+    console.log("cvm:cache:purged");
+  } catch (err: any) {
+    console.log("cvm:cache:purge-error", String(err && err.message || err));
+  }
+}
+
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -82,9 +140,31 @@ async function fetchZipBlob(dataset: Dataset, year: number): Promise<Blob> {
   assertClient();
   const directUrl = buildCVMUrl(dataset, year);
   const proxyUrl = `/api/fre/${year}`;
-  const isStaticExport = typeof location !== "undefined" && (location.protocol === "capacitor:" || location.protocol === "file:");
-  let chosen = isStaticExport ? directUrl : proxyUrl;
-  console.log("cvm:fetchZipBlob:start", { dataset, year, directUrl, proxyUrl, chosen });
+  let isNative = false;
+  let capHttp: any = null;
+  const protocol = typeof location !== "undefined" ? location.protocol : "";
+  const host = typeof location !== "undefined" ? location.hostname : "";
+  try {
+    const core = await import("@capacitor/core");
+    const Capacitor = (core as any).Capacitor || (core as any).default || null;
+    if (Capacitor && typeof Capacitor.isNativePlatform === "function") {
+      isNative = !!Capacitor.isNativePlatform();
+    }
+    capHttp = (core as any).CapacitorHttp || null;
+    if (!capHttp) {
+      try {
+        const httpPkg = await import("@capacitor/http");
+        capHttp = (httpPkg as any).Http || null;
+      } catch {}
+    }
+  } catch {}
+  const isCapOrFile = protocol === "capacitor:" || protocol === "file:";
+  const isLocalHost = host === "localhost";
+  let chosen = (isNative || isCapOrFile || isLocalHost) ? directUrl : proxyUrl;
+  console.log("cvm:fetchZipBlob:start", { dataset, year, directUrl, proxyUrl, chosen, protocol, host, isNative });
+  if (isNative || isCapOrFile) {
+    await purgeZipCache();
+  }
   const requestToday = new Request(`${chosen}?day=${todayKey()}`, { cache: "no-store" as RequestCache });
   const cache = await getCache();
   const cachedToday = await cache.match(requestToday);
@@ -94,30 +174,73 @@ async function fetchZipBlob(dataset: Dataset, year: number): Promise<Blob> {
     return blob;
   }
   try {
-    let isNative = false;
-    let hasCapHttp = false;
-    try {
-      const { Capacitor } = await import("@capacitor/core");
-      const { Http } = await import("@capacitor/http");
-      isNative = !!(Capacitor && typeof Capacitor.isNativePlatform === "function" && Capacitor.isNativePlatform());
-      hasCapHttp = !!Http;
-      if (isNative && hasCapHttp) {
-        const r = await (Http as any).get({ url: directUrl, responseType: "arraybuffer" });
-        const status = (r as any)?.status ?? 200;
+    if (isNative) {
+      try {
+        if (!capHttp) throw new Error("CapacitorHttp indisponível");
+        const r = await capHttp.get({
+          url: directUrl,
+          responseType: "arraybuffer",
+          connectTimeout: 20000,
+          readTimeout: 60000,
+          shouldEncodeUrlParams: false,
+        });
+        const status = (r as any)?.status ?? 0;
         const data = (r as any)?.data;
-        if (data && status >= 200 && status < 300) {
-          const buf: ArrayBuffer = data instanceof ArrayBuffer ? data : (base64ToUint8Array(String(data)).buffer as ArrayBuffer);
+        console.log("cvm:fetchZipBlob:native-http", { url: directUrl, status });
+        if (status >= 200 && status < 300 && data != null) {
+          let buf: ArrayBuffer;
+          if (data instanceof ArrayBuffer) {
+            buf = data as ArrayBuffer;
+          } else if (typeof data === "string") {
+            buf = base64ToUint8Array(data).buffer as ArrayBuffer;
+          } else if (typeof (data as any)?.data === "string") {
+            buf = base64ToUint8Array((data as any).data).buffer as ArrayBuffer;
+          } else {
+            throw new Error("Resposta nativa sem ArrayBuffer/base64 esperado");
+          }
           const blob = new Blob([buf], { type: "application/zip" });
           await cache.put(new Request(`${directUrl}?day=${todayKey()}`, { cache: "no-store" as RequestCache }), new Response(blob));
           console.log("cvm:fetchZipBlob:native-ok", { url: directUrl, size: blob.size });
           return blob;
         }
+        throw new Error(`HTTP nativo status ${status}`);
+      } catch (e: any) {
+        console.log("cvm:fetchZipBlob:native-http-error", String(e && e.message || e));
+        const targetFallbackYear = year === 2026 ? 2025 : undefined;
+        if (dataset === "FRE" && typeof targetFallbackYear !== "undefined") {
+          try {
+            const prevUrl = buildCVMUrl(dataset, targetFallbackYear);
+            const rr = await capHttp.get({ url: prevUrl, responseType: "arraybuffer" });
+            const status2 = (rr as any)?.status ?? 0;
+            const data2 = (rr as any)?.data;
+            console.log("cvm:fetchZipBlob:native-http-fallback", { url: prevUrl, status: status2 });
+            if (status2 >= 200 && status2 < 300 && data2 != null) {
+              let buf2: ArrayBuffer;
+              if (data2 instanceof ArrayBuffer) {
+                buf2 = data2 as ArrayBuffer;
+              } else if (typeof data2 === "string") {
+                buf2 = base64ToUint8Array(data2).buffer as ArrayBuffer;
+              } else if (typeof (data2 as any)?.data === "string") {
+                buf2 = base64ToUint8Array((data2 as any).data).buffer as ArrayBuffer;
+              } else {
+                throw new Error("Resposta nativa sem ArrayBuffer/base64 esperado");
+              }
+              const blob2 = new Blob([buf2], { type: "application/zip" });
+              await cache.put(new Request(`${prevUrl}?day=${todayKey()}`, { cache: "no-store" as RequestCache }), new Response(blob2));
+              console.log("cvm:fetchZipBlob:native-fallback-ok", { url: prevUrl, size: blob2.size });
+              return blob2;
+            }
+          } catch {}
+        }
+        const fallback = await findAnyCachedVersion(cache, directUrl);
+        if (fallback) return fallback;
+        throw new CVMOfflineError("Erro de rede ao baixar dados da CVM (nativo)", undefined, directUrl);
       }
-    } catch {}
+    }
     let resp: Response;
-    if (isNative || isStaticExport) {
+    if (isNative || isCapOrFile || isLocalHost) {
       chosen = directUrl;
-       console.log("cvm:fetchZipBlob:fetch-direct", { url: chosen });
+      console.log("cvm:fetchZipBlob:fetch-direct", { url: chosen });
       resp = await fetch(directUrl, { redirect: "follow" });
     } else {
       console.log("cvm:fetchZipBlob:fetch-proxy", { url: proxyUrl });
@@ -134,13 +257,22 @@ async function fetchZipBlob(dataset: Dataset, year: number): Promise<Blob> {
       if (dataset === "FRE" && typeof targetFallbackYear !== "undefined") {
         const prevUrl = buildCVMUrl(dataset, targetFallbackYear);
         try {
-          if (isNative && hasCapHttp) {
-            const { Http } = await import("@capacitor/http");
-            const rr = await (Http as any).get({ url: prevUrl, responseType: "arraybuffer" });
-            const status2 = (rr as any)?.status ?? 200;
+          if (isNative && capHttp) {
+            const rr = await capHttp.get({ url: prevUrl, responseType: "arraybuffer" });
+            const status2 = (rr as any)?.status ?? 0;
             const data2 = (rr as any)?.data;
+            console.log("cvm:fetchZipBlob:native-http-fallback", { url: prevUrl, status: status2 });
             if (data2 && status2 >= 200 && status2 < 300) {
-              const buf2: ArrayBuffer = data2 instanceof ArrayBuffer ? data2 : (base64ToUint8Array(String(data2)).buffer as ArrayBuffer);
+              let buf2: ArrayBuffer;
+              if (data2 instanceof ArrayBuffer) {
+                buf2 = data2 as ArrayBuffer;
+              } else if (typeof data2 === "string") {
+                buf2 = base64ToUint8Array(String(data2)).buffer as ArrayBuffer;
+              } else if (typeof (data2 as any)?.data === "string") {
+                buf2 = base64ToUint8Array((data2 as any).data).buffer as ArrayBuffer;
+              } else {
+                throw new Error("Resposta nativa sem ArrayBuffer/base64 esperado");
+              }
               const blob2 = new Blob([buf2], { type: "application/zip" });
               await cache.put(new Request(`${prevUrl}?day=${todayKey()}`, { cache: "no-store" as RequestCache }), new Response(blob2));
               console.log("cvm:fetchZipBlob:native-fallback-ok", { url: prevUrl, size: blob2.size });
@@ -196,41 +328,67 @@ export async function parseFREByCNPJ(cnpjInput: string, year?: number): Promise<
   console.log("cvm:parse:start", { cnpj, year: targetYear });
   const zipBlob = await fetchZipBlob("FRE", targetYear);
   console.log("cvm:parse:zip", { size: zipBlob.size });
-  const JSZip = await import("jszip");
-  const zip = await JSZip.loadAsync(await zipBlob.arrayBuffer());
+  const JSZipMod = await import("jszip");
+  const JSZipCls: any = (JSZipMod as any).default || JSZipMod;
+  const zip = await JSZipCls.loadAsync(await zipBlob.arrayBuffer());
   const files: FREFileResult[] = [];
   const fileNames = Object.keys(zip.files).filter((f) => f.toLowerCase().endsWith(".csv"));
   console.log("cvm:parse:entries", { count: fileNames.length });
   for (const name of fileNames) {
     const file = zip.file(name);
     if (!file) continue;
-    const buf = await file.async("arraybuffer");
+    console.log("Iniciando arquivo:", name);
     try {
+      const buf = await file.async("arraybuffer");
       const csvText = decodeLatin1(buf as ArrayBuffer);
+      const delimUsed = detectDelimiter(csvText);
+      const firstLine = (csvText.split(/\r?\n/).find((l) => l.trim().length > 0) || "");
+      const headers = firstLine ? firstLine.split(delimUsed).map((h) => h.trim()) : [];
+      console.log("cvm:parse:headers", { name, headers });
       const parsed = Papa.parse<string[]>(csvText, {
-        delimiter: ",",
-        newline: "\n",
+        delimiter: delimUsed,
         skipEmptyLines: true,
         header: false,
         dynamicTyping: false,
       });
       const filtered: string[][] = [];
       const data = parsed.data as unknown as string[][];
+      const delim = (parsed as any)?.meta?.delimiter ?? "";
+      const cnpjCols = findCnpjColumns(headers, delimUsed);
+      console.log("cvm:parse:cnpj-columns", { name, indices: cnpjCols });
       for (const row of data) {
         if (!Array.isArray(row)) continue;
-        for (const col of row) {
-          if (typeof col === "string" && col.replace(/\D+/g, "") === cnpj) {
-            filtered.push(row);
-            break;
+        if (cnpjCols.length > 0) {
+          let hit = false;
+          for (const idx of cnpjCols) {
+            const v = row[idx];
+            if (typeof v === "string" && v.replace(/\D+/g, "") === cnpj) {
+              hit = true;
+              break;
+            }
           }
+          if (hit) filtered.push(row);
+        } else {
+          let hit = false;
+          for (const col of row) {
+            if (typeof col === "string" && col.replace(/\D+/g, "") === cnpj) {
+              hit = true;
+              break;
+            }
+          }
+          if (hit) filtered.push(row);
         }
       }
-      files.push({ file: name, rows: filtered });
-      console.log("cvm:parse:file", { name, rows: filtered.length });
+      files.push({ file: name, rows: filtered, headers, delimiter: delimUsed });
+      console.log("cvm:parse:file", { name, rows: filtered.length, delimiter: delim });
       (parsed as unknown) = null as unknown as any;
       (csvText as unknown) = "" as unknown as any;
       (buf as unknown) = null as unknown as any;
-    } catch {}
+      console.log("Finalizado:", name);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    } catch (e: any) {
+      console.log("cvm:parse:file-error", { name, error: String(e && e.message || e) });
+    }
   }
   const summary: FRESummary = { cnpj, year: targetYear, files };
   try {
@@ -245,41 +403,67 @@ export async function parseFREBlobByCNPJ(cnpjInput: string, blob: Blob, year?: n
   const cnpj = sanitizeCNPJ(cnpjInput);
   const targetYear = year ?? currentYear();
   console.log("cvm:parse-blob:start", { cnpj, year: targetYear, size: blob.size });
-  const JSZip = await import("jszip");
-  const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+  const JSZipMod = await import("jszip");
+  const JSZipCls: any = (JSZipMod as any).default || JSZipMod;
+  const zip = await JSZipCls.loadAsync(await blob.arrayBuffer());
   const files: FREFileResult[] = [];
   const fileNames = Object.keys(zip.files).filter((f) => f.toLowerCase().endsWith(".csv"));
   console.log("cvm:parse-blob:entries", { count: fileNames.length });
   for (const name of fileNames) {
     const file = zip.file(name);
     if (!file) continue;
-    const buf = await file.async("arraybuffer");
+    console.log("Iniciando arquivo:", name);
     try {
+      const buf = await file.async("arraybuffer");
       const csvText = decodeLatin1(buf as ArrayBuffer);
+      const delimUsed = detectDelimiter(csvText);
+      const firstLine = (csvText.split(/\r?\n/).find((l) => l.trim().length > 0) || "");
+      const headers = firstLine ? firstLine.split(delimUsed).map((h) => h.trim()) : [];
+      console.log("cvm:parse-blob:headers", { name, headers });
       const parsed = Papa.parse<string[]>(csvText, {
-        delimiter: ",",
-        newline: "\n",
+        delimiter: delimUsed,
         skipEmptyLines: true,
         header: false,
         dynamicTyping: false,
       });
       const filtered: string[][] = [];
       const data = parsed.data as unknown as string[][];
+      const delim = (parsed as any)?.meta?.delimiter ?? "";
+      const cnpjCols = findCnpjColumns(headers, delimUsed);
+      console.log("cvm:parse-blob:cnpj-columns", { name, indices: cnpjCols });
       for (const row of data) {
         if (!Array.isArray(row)) continue;
-        for (const col of row) {
-          if (typeof col === "string" && col.replace(/\D+/g, "") === cnpj) {
-            filtered.push(row);
-            break;
+        if (cnpjCols.length > 0) {
+          let hit = false;
+          for (const idx of cnpjCols) {
+            const v = row[idx];
+            if (typeof v === "string" && v.replace(/\D+/g, "") === cnpj) {
+              hit = true;
+              break;
+            }
           }
+          if (hit) filtered.push(row);
+        } else {
+          let hit = false;
+          for (const col of row) {
+            if (typeof col === "string" && col.replace(/\D+/g, "") === cnpj) {
+              hit = true;
+              break;
+            }
+          }
+          if (hit) filtered.push(row);
         }
       }
-      files.push({ file: name, rows: filtered });
-      console.log("cvm:parse-blob:file", { name, rows: filtered.length });
+      files.push({ file: name, rows: filtered, headers, delimiter: delimUsed });
+      console.log("cvm:parse-blob:file", { name, rows: filtered.length, delimiter: delim });
       (parsed as unknown) = null as unknown as any;
       (csvText as unknown) = "" as unknown as any;
       (buf as unknown) = null as unknown as any;
-    } catch {}
+      console.log("Finalizado:", name);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    } catch (e: any) {
+      console.log("cvm:parse-blob:file-error", { name, error: String(e && e.message || e) });
+    }
   }
   const summary: FRESummary = { cnpj, year: targetYear, files };
   try {
@@ -316,6 +500,21 @@ export function loadReportLocal(cnpj: string, year: number): FRESummary | null {
   } catch {
     return null;
   }
+}
+
+export async function clearAllMemory(): Promise<void> {
+  assertClient();
+  try {
+    await purgeZipCache();
+  } catch {}
+  try {
+    const keys = Object.keys(window.localStorage);
+    for (const k of keys) {
+      if (k.startsWith("DiligenceGo:report:")) {
+        window.localStorage.removeItem(k);
+      }
+    }
+  } catch {}
 }
 
 export function legalDisclaimer(): string {
