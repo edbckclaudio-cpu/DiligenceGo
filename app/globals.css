@@ -7,7 +7,20 @@ html, body {
 }
 
 :root {
-  --color-primary: #A4C2A8;
-  --color-primary-hover: #96B89F;
+  --green-50: #F5F9F6;
+  --green-100: #EAF2ED;
+  --green-200: #DFEBE3;
+  --green-300: #D4E4D9;
+  --green-400: #C9DDCF;
+  --green-500: #C2D6C5;
+  --green-600: #B2C8B5;
+  --green-700: #A2BAA5;
+  --green-800: #93AC96;
+  --green-900: #839E86;
+  --color-primary: var(--green-600);
+  --color-primary-hover: var(--green-700);
   --color-on-primary: #ffffff;
+  --surface-bg: var(--green-50);
+  --surface: var(--green-50);
+  --surface-border: var(--green-200);
 }

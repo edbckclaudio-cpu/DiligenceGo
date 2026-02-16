@@ -9,7 +9,7 @@ export function Tabs({ defaultValue, children }: { defaultValue: string; childre
 }
 
 export function TabsList({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`inline-grid items-center gap-1 rounded-md border bg-white p-1 ${className}`}>{children}</div>;
+  return <div className={`inline-grid items-center gap-1 rounded-md border bg-[var(--surface)] border-[var(--surface-border)] p-1 ${className}`}>{children}</div>;
 }
 
 export function TabsTrigger({ value, children }: { value: string; children: React.ReactNode }) {
@@ -21,7 +21,7 @@ export function TabsTrigger({ value, children }: { value: string; children: Reac
       className={
         active
           ? "px-3 py-3 sm:py-2 text-sm rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-          : "px-3 py-3 sm:py-2 text-sm rounded-md hover:bg-[var(--color-primary-hover)]/20"
+          : "px-3 py-3 sm:py-2 text-sm rounded-md hover:bg-[var(--green-100)]"
       }
       aria-pressed={active}
     >

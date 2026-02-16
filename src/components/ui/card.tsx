@@ -1,11 +1,11 @@
 import * as React from "react";
 
 export function Card({ children }: { children: React.ReactNode }) {
-  return <div className="border rounded-md bg-white">{children}</div>;
+  return <div className="border rounded-md bg-[var(--surface)] border-[var(--surface-border)]">{children}</div>;
 }
 
 export function CardHeader({ children }: { children: React.ReactNode }) {
-  return <div className="px-4 py-3 border-b">{children}</div>;
+  return <div className="px-4 py-3 border-b border-[var(--surface-border)]">{children}</div>;
 }
 
 export function CardTitle({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -15,4 +15,3 @@ export function CardTitle({ children, className = "" }: { children: React.ReactN
 export function CardContent({ children }: { children: React.ReactNode }) {
   return <div className="p-4">{children}</div>;
 }
-

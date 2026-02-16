@@ -8,7 +8,7 @@ import "../app/globals.css";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body className="min-h-screen bg-neutral-50 text-neutral-900">
+      <body className="min-h-screen bg-[var(--surface-bg)] text-neutral-900">
         <div className="min-h-screen flex flex-col">
           <header className="border-b bg-white">
             <div className="mx-auto max-w-4xl px-4 py-3 flex items-center justify-between">
@@ -26,4 +26,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-
