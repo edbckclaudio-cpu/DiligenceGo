@@ -73,7 +73,7 @@ export default function Dashboard() {
       return;
     }
     limparCnpj(digits);
-    consultar();
+    consultar(only);
   }
 
   async function proceedNewSearch() {
@@ -112,7 +112,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <SearchForm onSearch={(v) => handleSearchRequest(v)} />
+      <SearchForm onSearch={(v) => handleSearchRequest(v)} loading={loading} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <select

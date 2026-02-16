@@ -13,12 +13,13 @@ export function useCvmData() {
   const [errorInfo, setErrorInfo] = useState<{ status?: number; url?: string; message?: string } | null>(null);
   const current = useMemo(() => currentYear(), []);
 
-  async function consultar() {
+  async function consultar(cnpjArg?: string) {
     setLoading(true);
     setError(null);
     setErrorInfo(null);
     try {
-      const s = sanitizeCNPJ(cnpj);
+      const s = sanitizeCNPJ(cnpjArg ?? cnpj);
+      if (cnpjArg) setCnpj(s);
       if (!s || s.length !== 14) {
         setError("Informe um CNPJ válido (14 dígitos).");
         return;

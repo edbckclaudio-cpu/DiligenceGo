@@ -1,9 +1,9 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, LoaderCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
-export function SearchForm({ onSearch }: { onSearch: (cnpj: string) => void }) {
+export function SearchForm({ onSearch, loading = false }: { onSearch: (cnpj: string) => void; loading?: boolean }) {
   const [digits, setDigits] = useState("");
   const formatted = useMemo(() => {
     const g = [2, 3, 3, 4, 2];
@@ -37,9 +37,13 @@ export function SearchForm({ onSearch }: { onSearch: (cnpj: string) => void }) {
             inputMode="numeric"
           />
         </div>
-        <Button onClick={() => onSearch(digits)} className="w-full sm:w-auto" disabled={!digits}>
-          <Search className="w-4 h-4 mr-2" />
-          Consultar
+        <Button
+          onClick={() => onSearch(digits)}
+          className="h-10 px-3 text-sm w-full sm:w-auto"
+          disabled={!digits || loading}
+        >
+          {loading ? <LoaderCircle className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+          {loading ? "Consultando..." : "Consultar"}
         </Button>
       </div>
       <p className="text-xs text-slate-500">Dados processados localmente. Fonte: Portal de Dados Abertos CVM.</p>

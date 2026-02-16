@@ -35,7 +35,7 @@ export default function Dashboard() {
         <ExportButton isPremium={true} onExport={exportarCSV} />
       </header>
 
-      <SearchForm onSearch={(v) => { limparCnpj(v); consultar(); }} />
+      <SearchForm onSearch={(v) => { const only = v.replace(/\D+/g, ""); limparCnpj(v); consultar(only); }} loading={loading} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <select
