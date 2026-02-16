@@ -18,7 +18,7 @@ export default function Dashboard() {
     return "Governança";
   }
 
-  const groups: Record<string, { file: string; rows: string[][] }[]> = {
+  const groups: Record<string, { file: string; rows: string[][]; headers?: string[] }[]> = {
     Governança: [],
     Remuneração: [],
     Litígios: [],

@@ -71,7 +71,9 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
               <button
                 key={i}
                 className={`w-full text-left border-b pb-2 last:border-0 rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] ${
-                  selectedIndex === i ? "bg-yellow-100 border-yellow-300" : "hover:bg-[var(--green-100)]"
+                  selectedIndex === i
+                    ? "bg-[var(--color-primary)]/15 border-2 border-[var(--color-primary)]"
+                    : "hover:bg-[var(--green-100)]"
                 }`}
                 onClick={() => openDetails(r, i)}
               >
