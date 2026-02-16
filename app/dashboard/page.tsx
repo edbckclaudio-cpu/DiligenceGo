@@ -183,7 +183,7 @@ export default function Dashboard() {
       {drawerOpen && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl border-t p-4 space-y-4 z-50">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 space-y-4 z-50 w-[92vw] max-w-md max-h-[80vh] overflow-auto">
             <div className="text-base font-semibold">Enviar a consulta anterior e iniciar nova?</div>
             <div className="text-sm text-neutral-600">Escolha uma opção para compartilhar a anterior e continuaremos com a nova consulta.</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -199,20 +199,21 @@ export default function Dashboard() {
       {formatPickerOpen && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setFormatPickerOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl border-t p-4 space-y-4 z-50">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 space-y-4 z-50 w-[92vw] max-w-md max-h-[80vh] overflow-auto">
             <div className="text-base font-semibold">Formato de envio</div>
             <div className="text-sm text-neutral-600">Deseja enviar em texto no corpo ou em tabela (.csv/.txt)?</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 onClick={() => {
                   setFormatPickerOpen(false);
+                  const textContent = buildFullText(files as any, cnpj, year ?? current);
                   if (channel === "email") {
                     const subject = `DiligenceGo relatório ${cnpj} ${year ?? current}`;
-                    const mail = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(prevSummaryText)}`;
+                    const mail = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(textContent)}`;
                     try { window.location.href = mail; } catch {}
                     proceedNewSearch();
                   } else if (channel === "whatsapp") {
-                    const url = `https://wa.me/?text=${encodeURIComponent(prevSummaryText)}`;
+                    const url = `https://wa.me/?text=${encodeURIComponent(textContent)}`;
                     try { window.open(url, "_blank", "noopener,noreferrer"); } catch {}
                     proceedNewSearch();
                   }
@@ -274,6 +275,31 @@ function buildDelimitedContent(files: any[], fallbackDelim: string): string {
     lines.push("");
   }
   return lines.join("\n");
+}
+
+function buildFullText(files: any[], cnpj: string, year: number): string {
+  const out: string[] = [];
+  out.push(`Relatório DiligenceGo`);
+  out.push(`CNPJ: ${cnpj}`);
+  out.push(`Ano: ${year}`);
+  out.push("");
+  for (const f of files) {
+    const headers = (f?.headers as string[]) || [];
+    out.push(`Arquivo: ${String(f.file)}`);
+    const rows: string[][] = (f?.rows as string[][]) || [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      out.push(`Linha ${i + 1}:`);
+      for (let j = 0; j < r.length; j++) {
+        const k = headers[j] ?? `Coluna ${j + 1}`;
+        const v = String(r[j] ?? "");
+        out.push(`${k}: ${v}`);
+      }
+      out.push("");
+    }
+    out.push("");
+  }
+  return out.join("\n");
 }
 
 async function shareFile(content: string, mime: string, filename: string): Promise<void> {
