@@ -162,19 +162,19 @@ export default function Dashboard() {
 
         <TabsContent value="litigios">
           {groups["Litígios"].map((f) => (
-            <DataCard key={f.file} title={`Processos (FRE) - ${f.file}`} rows={f.rows} headers={f.headers || []} />
+            <DataCard key={f.file} title={`Processos (FRE) - ${f.file}`} rows={f.rows} headers={f.headers || []} file={f.file} />
           ))}
           {groups["Litígios"].length === 0 && <div className="text-sm text-neutral-600">Nenhum dado de litígios.</div>}
         </TabsContent>
         <TabsContent value="gov">
           {groups["Governança"].map((f) => (
-            <DataCard key={f.file} title={`Governança - ${f.file}`} rows={f.rows} headers={f.headers || []} />
+            <DataCard key={f.file} title={`Governança - ${f.file}`} rows={f.rows} headers={f.headers || []} file={f.file} />
           ))}
           {groups["Governança"].length === 0 && <div className="text-sm text-neutral-600">Nenhum dado de governança.</div>}
         </TabsContent>
         <TabsContent value="sancoes">
           {groups["Sancionador"].map((f) => (
-            <DataCard key={f.file} title={`Sancionador - ${f.file}`} rows={f.rows} headers={f.headers || []} />
+            <DataCard key={f.file} title={`Sancionador - ${f.file}`} rows={f.rows} headers={f.headers || []} file={f.file} />
           ))}
           {groups["Sancionador"].length === 0 && <div className="text-sm text-neutral-600">Nenhum dado sancionador.</div>}
         </TabsContent>

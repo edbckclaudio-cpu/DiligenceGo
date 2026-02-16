@@ -1,9 +1,10 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useState, useMemo } from "react";
 
-export function DataCard({ title, rows, headers = [] }: { title: string; rows: string[][]; headers?: string[] }) {
+export function DataCard({ title, rows, headers = [], file }: { title: string; rows: string[][]; headers?: string[]; file?: string }) {
   const [selected, setSelected] = useState<string[] | null>(null);
   const [open, setOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   function formatCNPJ(s: string): string {
     const only = (s || "").replace(/\D+/g, "");
@@ -33,13 +34,15 @@ export function DataCard({ title, rows, headers = [] }: { title: string; rows: s
     return list;
   }, [selected, headers]);
 
-  function openDetails(row: string[]) {
+  function openDetails(row: string[], idx: number) {
     setSelected(row);
+    setSelectedIndex(idx);
     setOpen(true);
   }
 
   function buildShareText(): string {
     const lines: string[] = [];
+    if (file) lines.push(`Arquivo: ${String(file)}`);
     for (const p of pairs) lines.push(`${p.k}: ${p.v}`);
     return lines.join("\n");
   }
@@ -64,11 +67,13 @@ export function DataCard({ title, rows, headers = [] }: { title: string; rows: s
           <div className="text-sm text-neutral-600">Nenhum dado disponível.</div>
         ) : (
           <div className="space-y-2 text-sm">
-            {rows.slice(0, 20).map((r, i) => (
+            {rows.map((r, i) => (
               <button
                 key={i}
-                className="w-full text-left border-b pb-2 last:border-0 hover:bg-neutral-50 rounded"
-                onClick={() => openDetails(r)}
+                className={`w-full text-left border-b pb-2 last:border-0 rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] ${
+                  selectedIndex === i ? "bg-yellow-100 border-yellow-300" : "hover:bg-[var(--green-100)]"
+                }`}
+                onClick={() => openDetails(r, i)}
               >
                 <p className="font-semibold">{r.join(" • ")}</p>
               </button>
@@ -78,9 +83,16 @@ export function DataCard({ title, rows, headers = [] }: { title: string; rows: s
       </CardContent>
       {open && selected && (
         <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setOpen(false)} />
+          <div
+            className="absolute inset-0 bg-black/40 z-40"
+            onClick={() => {
+              setOpen(false);
+              setSelectedIndex(null);
+            }}
+          />
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 w-[92vw] max-w-md space-y-3 z-50">
             <div className="text-base font-semibold">Detalhes</div>
+            {file && <div className="text-xs text-neutral-600">Arquivo: {file}</div>}
             <div className="space-y-2">
               {pairs.map((p, idx) => (
                 <div key={idx} className="flex gap-2">
@@ -90,7 +102,15 @@ export function DataCard({ title, rows, headers = [] }: { title: string; rows: s
               ))}
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setOpen(false)} className="px-3 py-2 rounded-md bg-neutral-200">Fechar</button>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  setSelectedIndex(null);
+                }}
+                className="px-3 py-2 rounded-md bg-neutral-200"
+              >
+                Fechar
+              </button>
               <button onClick={shareWhatsApp} className="px-3 py-2 rounded-md bg-green-600 text-white">WhatsApp</button>
             </div>
           </div>
