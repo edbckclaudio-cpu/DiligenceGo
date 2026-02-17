@@ -5,9 +5,7 @@ import { DataCard } from "@/components/cvm/DataCard";
 import { ExportButton } from "@/components/cvm/ExportButton";
 import { SearchForm } from "@/components/cvm/SearchForm";
 import { useCvmData } from "@/hooks/useCvmData";
-import { Input } from "@/components/ui/input";
-import { clearAllMemory, loadReportLocal } from "@/lib/cvm-parser";
-import { Settings, Info } from "lucide-react";
+import { clearAllMemory } from "@/lib/cvm-parser";
 
 export default function Dashboard() {
   const { cnpj, year, setYear, limparCnpj, consultar, importarZip, carregarCache, exportarCSV, zipUrl, files, loading, error, errorInfo, current } =
@@ -21,20 +19,12 @@ export default function Dashboard() {
   const [selectedSections, setSelectedSections] = useState<string[]>([
     "Resumo Executivo",
     "Governança",
-    "Compliance/Antecedentes",
+    "Antecedentes (CVM)",
     "Estrutura Acionária",
     "Passivos (Debêntures)",
     "Diversidade (ESG)",
   ]);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [apiKey, setApiKey] = useState<string>("");
-  const [showKeyInfo, setShowKeyInfo] = useState(false);
-  useEffect(() => {
-    try {
-      const k = window.localStorage.getItem("DiligenceGo:PortalTransparencia:APIKey");
-      if (k) setApiKey(k);
-    } catch {}
-  }, []);
+  const [settingsOpen] = useState(false);
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -128,13 +118,6 @@ export default function Dashboard() {
   return (
     <div className="p-4 space-y-6 mx-auto max-w-4xl">
       <div className="flex items-center justify-end gap-2">
-        <button
-          onClick={() => setSettingsOpen(true)}
-          aria-label="Configurações"
-          className="px-3 py-2 rounded-md border bg-white"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
         <div className="w-full sm:w-auto">
           <ExportButton
             isPremium={true}
@@ -199,56 +182,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {settingsOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setSettingsOpen(false)} />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 space-y-4 z-50 w-[92vw] max-w-md">
-            <div className="text-base font-semibold">Configurações</div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">API-KEY do Portal da Transparência</label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Insira sua chave pessoal"
-                />
-                <button
-                  onClick={() => setShowKeyInfo((v) => !v)}
-                  aria-label="Informações"
-                  className="px-3 py-2 rounded-md border bg-white"
-                >
-                  <Info className="w-4 h-4" />
-                </button>
-              </div>
-              {showKeyInfo && (
-                <div className="text-xs text-neutral-700 border rounded-md p-2 bg-[var(--surface)]">
-                  <div><a href="https://api.portaldatransparencia.gov.br/" target="_blank" rel="noopener noreferrer" className="underline">https://api.portaldatransparencia.gov.br/</a></div>
-                  <div className="mt-1">Passo a passo:</div>
-                  <div>1. Faça login com Gov.br</div>
-                  <div>2. Vá em Minha Conta</div>
-                  <div>3. Gere a sua Chave</div>
-                  <div className="mt-1">Por que é seguro? A chave é pessoal e fica guardada apenas no seu dispositivo. Usar a sua própria chave garante que não haja limites de consulta e que o acesso seja direto e oficial junto ao Governo Federal.</div>
-                </div>
-              )}
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => {
-                  try {
-                    window.localStorage.setItem("DiligenceGo:PortalTransparencia:APIKey", apiKey.trim());
-                  } catch {}
-                  setSettingsOpen(false);
-                }}
-                className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-              >
-                Salvar
-              </button>
-              <button onClick={() => setSettingsOpen(false)} className="px-3 py-2 rounded-md border">Fechar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <Tabs defaultValue="litigios">
         <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="gov">Governança</TabsTrigger>
@@ -299,7 +232,7 @@ export default function Dashboard() {
             <div className="text-base font-semibold">Gerar Resumo</div>
             <div className="text-sm text-neutral-600">Selecione as seções a incluir.</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {["Resumo Executivo","Governança","Compliance/Antecedentes","Estrutura Acionária","Passivos (Debêntures)","Diversidade (ESG)"].map((sec) => {
+              {["Resumo Executivo","Governança","Antecedentes (CVM)","Estrutura Acionária","Passivos (Debêntures)","Diversidade (ESG)"].map((sec) => {
                 const checked = selectedSections.includes(sec);
                 return (
                   <label key={sec} className="flex items-center gap-2 border rounded-md px-3 py-2">
@@ -547,13 +480,6 @@ function buildReportText(sections: string[], meta: { cnpj: string; year: number 
   lines.push(`Gerado em: ${dh}`);
   lines.push(`CNPJ: ${meta.cnpj}`);
   lines.push(`Ano: ${meta.year}`);
-  try {
-    const summary = loadReportLocal(meta.cnpj, meta.year);
-    const comp = summary?.compliance;
-    if (comp && comp.disabled) {
-      lines.push(`Módulo de Compliance desativado (Chave API ausente)`);
-    }
-  } catch {}
   lines.push("");
   for (const sec of sections) {
     lines.push(`== ${sec} ==`);
@@ -564,7 +490,7 @@ function buildReportText(sections: string[], meta: { cnpj: string; year: number 
     } else if (sec === "Governança") {
       const gov = files.filter((f) => classifyByName(f.file) === "Governança");
       lines.push(`Itens de governança: ${gov.reduce((a, f) => a + (f.rows?.length || 0), 0)}`);
-    } else if (sec === "Compliance/Antecedentes") {
+    } else if (sec === "Antecedentes (CVM)") {
       const pas = files.filter((f) => classifyByName(f.file) === "Sancionador");
       const lit = files.filter((f) => classifyByName(f.file) === "Litígios");
       lines.push(`Registros sancionadores: ${pas.reduce((a, f) => a + (f.rows?.length || 0), 0)}`);
@@ -603,7 +529,7 @@ function generateProfessionalReport(sections: string[], meta: { cnpj: string; ye
     }).join("");
     content += section("Governança", parts || `<div style="color:#6b7280;">Nenhum dado.</div>`);
   }
-  if (sections.includes("Compliance/Antecedentes")) {
+  if (sections.includes("Antecedentes (CVM)")) {
     const pas = files.filter((f) => classifyByName(f.file) === "Sancionador");
     const lit = files.filter((f) => classifyByName(f.file) === "Litígios");
     const renderBlock = (arr: any[], title: string) => {
@@ -624,7 +550,7 @@ function generateProfessionalReport(sections: string[], meta: { cnpj: string; ye
       return `<div><div style="font-weight:600;margin-top:4px;">${title}</div>${blocks || `<div style="color:#6b7280;">Nenhum dado.</div>`}</div>`;
     };
     const compHtml = `${renderBlock(pas, "Sancionador (PAS)")} ${renderBlock(lit, "Litígios")}`;
-    content += section("Compliance/Antecedentes", compHtml);
+    content += section("Antecedentes (CVM)", compHtml);
   }
   if (sections.includes("Estrutura Acionária")) {
     content += section("Estrutura Acionária", `<div style="color:#6b7280;">Dados não disponíveis no conjunto atual.</div>`);
@@ -635,145 +561,7 @@ function generateProfessionalReport(sections: string[], meta: { cnpj: string; ye
   if (sections.includes("Diversidade (ESG)")) {
     content += section("Diversidade (ESG)", `<div style="color:#6b7280;">Dados não disponíveis no conjunto atual.</div>`);
   }
-  // Compliance sancionatória
-  try {
-    const summary = loadReportLocal(meta.cnpj, meta.year);
-    const comp = summary?.compliance;
-    let compHtml = "";
-    if (!comp || comp.disabled) {
-      compHtml = `<div style="padding:12px;border-radius:8px;background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;">Módulo de Compliance desativado (Chave API ausente).</div>`;
-    } else if (comp?.error) {
-      compHtml = `<div style="padding:12px;border-radius:8px;background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;">Módulo de Compliance indisponível. ${comp.error}</div>`;
-    } else if ((comp?.ceis?.length || 0) === 0 && (comp?.cnep?.length || 0) === 0) {
-      compHtml = `<div style="padding:12px;border-radius:8px;background:#E6F9EA;color:#065F46;border:1px solid #34D399;font-weight:600;">✅ CONFORMIDADE: O CNPJ pesquisado não possui registos ativos nos cadastros de sanções federais (CEIS/CNEP).</div>`;
-      const diag = (comp as any)?.diagnostics;
-      if (diag && Array.isArray(diag.attempts)) {
-        const head2 = `<thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Fonte</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Status</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Itens</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Com CNPJ</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">URL</th></tr></thead>`;
-        const body2 = `<tbody>${diag.attempts.map((a: any) => `<tr>
-          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${String(a.source || "")}</td>
-          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.status === "number" ? String(a.status) : "-"}</td>
-          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.total === "number" ? String(a.total) : "-"}</td>
-          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.matched === "number" ? String(a.matched) : "-"}</td>
-          <td style="padding:6px;border-bottom:1px solid #e5e7eb;word-break:break-all;">${String(a.url || "")}</td>
-        </tr>`).join("")}</tbody>`;
-        const sup = `<div style="font-size:12px;color:#6b7280;margin-top:6px;">Chave API: ${diag.keyPresent ? "Sim" : "Não"} &nbsp; CNPJ consultado: ${String(diag.cnpj || "")}</div>`;
-        compHtml += `<div style="margin-top:8px;"><div style="font-weight:600;margin-bottom:4px;">Diagnóstico de Compliance</div><table style="width:100%;border-collapse:collapse;">${head2}${body2}</table>${sup}</div>`;
-      }
-    } else {
-      const headers = ["Cadastro","Nome","Documento","Órgão Sancionador","Categoria/Tipo","Vigência","Processo","Link"];
-      function pickPath(obj: any, path: string): any {
-        try {
-          const parts = path.split(".");
-          let cur = obj;
-          for (const p of parts) {
-            if (cur == null) return undefined;
-            cur = cur[p];
-          }
-          return cur;
-        } catch {
-          return undefined;
-        }
-      }
-      function pick(row: any, candidates: string[]): string {
-        for (const key of candidates) {
-          const v = key.includes(".") ? pickPath(row, key) : row?.[key];
-          if (typeof v === "string" && v.trim()) return v;
-          if (typeof v === "number") return String(v);
-          if (v && typeof v === "object") {
-            if (typeof v.nome === "string" && v.nome.trim()) {
-              const uf = typeof v.uf === "string" && v.uf.trim() ? ` - ${v.uf}` : "";
-              return `${v.nome}${uf}`;
-            }
-            if (typeof v.tipo === "string" && v.tipo.trim()) return v.tipo;
-          }
-        }
-        return "";
-      }
-      function fmtDateLike(s: string): string {
-        const t = String(s || "").trim();
-        if (!t) return "";
-        const m = t.match(/^(\d{4})[-\/](\d{2})[-\/](\d{2})/);
-        if (m) return `${m[3]}/${m[2]}/${m[1]}`;
-        const m2 = t.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})/);
-        if (m2) return `${m2[1]}/${m2[2]}/${m2[3]}`;
-        return t;
-      }
-      function fmtPeriodo(row: any): string {
-        const ini = pick(row, ["sancao.inicioData","sancao.inicio_data","dataInicio","data_inicio","vigencia"]);
-        const fim = pick(row, ["sancao.fimData","sancao.fim_data","dataFim","data_fim"]);
-        const pub = pick(row, ["sancao.publicacao_data","dataPublicacao","data_publicacao","data"]);
-        const iniF = fmtDateLike(ini);
-        const fimF = fmtDateLike(fim);
-        const pubF = fmtDateLike(pub);
-        if (iniF && fimF) return `${iniF} - ${fimF}`;
-        if (iniF) return iniF;
-        if (pubF) return pubF;
-        return "";
-      }
-      function rowKey(r: any): string {
-        const id = pick(r, ["id","codigo","sequencial","identificador","sancao.id"]);
-        const doc = pick(r, ["documentoSancionado","documento","cpfCnpj","cnpj","cnpjSancionado"]);
-        const org = pick(r, ["orgaoSancionador.nome","orgao.nome","entidade","origem"]);
-        const tipo = pick(r, ["sancao.tipo","tipoSancao","situacao","tipo","modalidade","natureza"]);
-        const per = fmtPeriodo(r);
-        return [id || "", doc || "", org || "", tipo || "", per || ""].join("|");
-      }
-      const seen = new Set<string>();
-      const rowsCeis = (comp?.ceis || []).map((r) => {
-        const id = pick(r, ["id","codigo","sequencial","identificador","sancao.id"]);
-        const link = id ? `https://portaldatransparencia.gov.br/sancoes/consulta/${id}` : `https://portaldatransparencia.gov.br/sancoes/consulta?cadastro=1&ordenarPor=nomeSancionado&direcao=asc&cpfCnpj=${meta.cnpj}`;
-        return [
-          "CEIS",
-          pick(r, ["nomeSancionado","pessoaSancionada","nome"]),
-          pick(r, ["documentoSancionado","documento","cpfCnpj","cnpj","cnpjSancionado"]),
-          pick(r, ["orgaoSancionador.nome","orgao.nome","origemInformacao.entidade","entidade","orgaoSancionador","orgao","origem"]),
-          pick(r, ["sancao.tipo","tipoSancao","situacao","tipo","modalidade"]),
-          fmtPeriodo(r),
-          pick(r, ["numeroProcesso","processo","numero","id"]),
-          `<a href="${link}" target="_blank" rel="noopener noreferrer" onclick="try{window.open(this.href,'_blank');return false;}catch(e){return true;}">Abrir</a>`,
-        ];
-      });
-      const rowsCnep = (comp?.cnep || []).map((r) => {
-        const id = pick(r, ["id","codigo","sequencial","identificador","sancao.id"]);
-        const link = id ? `https://portaldatransparencia.gov.br/sancoes/consulta/${id}` : `https://portaldatransparencia.gov.br/sancoes/consulta?cadastro=1&ordenarPor=nomeSancionado&direcao=asc&cpfCnpj=${meta.cnpj}`;
-        return [
-          "CNEP",
-          pick(r, ["nomeSancionado","pessoaSancionada","nome"]),
-          pick(r, ["documentoSancionado","documento","cpfCnpj","cnpj","cnpjSancionado"]),
-          pick(r, ["orgaoSancionador.nome","orgao.nome","origemInformacao.entidade","entidade","orgaoSancionador","orgao","origem"]),
-          pick(r, ["sancao.tipo","tipoSancao","tipo","natureza"]),
-          fmtPeriodo(r),
-          pick(r, ["numeroProcesso","processo","numero","id"]),
-          `<a href="${link}" target="_blank" rel="noopener noreferrer" onclick="try{window.open(this.href,'_blank');return false;}catch(e){return true;}">Abrir</a>`,
-        ];
-      });
-      const merged = [...rowsCeis, ...rowsCnep].filter((r) => r.some((c) => String(c).trim()));
-      const rows = merged.filter((_, idx) => {
-        const key = rowKey((idx < (comp?.ceis?.length || 0)) ? (comp?.ceis || [])[idx] : (comp?.cnep || [])[idx - (comp?.ceis?.length || 0)]);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-      const dangerHead = `<thead><tr>${headers.map((h) => `<th style="text-align:left;padding:8px;border-bottom:1px solid #ef4444;color:#b91c1c;font-weight:700;">${h}</th>`).join("")}</tr></thead>`;
-      const body = `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td style="padding:8px;border-bottom:1px solid #fde68a;background:#fff7ed;">${String(c)}</td>`).join("")}</tr>`).join("")}</tbody>`;
-      compHtml = `<div style="margin-top:8px;">${rows.length ? `<table style="width:100%;border-collapse:collapse;margin-top:8px;margin-bottom:16px;">${dangerHead}${body}</table>` : `<div style="color:#6b7280;">Nenhum detalhe disponível.</div>`}</div>`;
-      if (comp?.error) compHtml += `<div style="font-size:12px;color:#6b7280;">Aviso: ${comp.error}</div>`;
-      const diag = (comp as any)?.diagnostics;
-      if (diag && Array.isArray(diag.attempts)) {
-        const head2 = `<thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Fonte</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Status</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Itens</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Com CNPJ</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">URL</th></tr></thead>`;
-        const body2 = `<tbody>${diag.attempts.map((a: any) => `<tr>
-          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${String(a.source || "")}</td>
-          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.status === "number" ? String(a.status) : "-"}</td>
-          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.total === "number" ? String(a.total) : "-"}</td>
-          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.matched === "number" ? String(a.matched) : "-"}</td>
-          <td style="padding:6px;border-bottom:1px solid #e5e7eb;word-break:break-all;">${String(a.url || "")}</td>
-        </tr>`).join("")}</tbody>`;
-        const sup = `<div style="font-size:12px;color:#6b7280;margin-top:6px;">Chave API: ${diag.keyPresent ? "Sim" : "Não"} &nbsp; CNPJ consultado: ${String(diag.cnpj || "")}</div>`;
-        compHtml += `<div style="margin-top:8px;"><div style="font-weight:600;margin-bottom:4px;">Diagnóstico de Compliance</div><table style="width:100%;border-collapse:collapse;">${head2}${body2}</table>${sup}</div>`;
-      }
-    }
-    content += section("AUDITORIA DE COMPLIANCE SANCIONATÓRIA", compHtml);
-  } catch {}
+  // Seção de Compliance sancionatória removida por solicitação
   const html = `<!doctype html>
   <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Relatório DiligenceGo</title>
   <style>${baseStyle}</style></head><body>
