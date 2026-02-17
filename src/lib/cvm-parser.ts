@@ -1,6 +1,11 @@
 export type Dataset = "FRE" | "PAS";
 export type FREFileResult = { file: string; rows: string[][]; headers?: string[]; delimiter?: string };
-export type FRESummary = { cnpj: string; year: number; files: FREFileResult[] };
+export type FRESummary = {
+  cnpj: string;
+  year: number;
+  files: FREFileResult[];
+  compliance?: { ceis?: any[]; cnep?: any[]; disabled?: boolean; error?: string };
+};
 
 export class CVMOfflineError extends Error {
   status?: number;
@@ -30,6 +35,44 @@ export function sanitizeCNPJ(input: string): string {
 
 export function currentYear(): number {
   return new Date().getFullYear();
+}
+
+function getPortalApiKey(): string | null {
+  try {
+    assertClient();
+    const k = window.localStorage.getItem("DiligenceGo:PortalTransparencia:APIKey");
+    return k && k.trim() ? k.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchComplianceCEIS(cnpjDigits: string, key: string): Promise<any[]> {
+  const url = `https://api.portaldatransparencia.gov.br/api/ceis?cpfCnpj=${cnpjDigits}&pagina=1&tamanho=100`;
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "chave-api-dados": key,
+    chave: key,
+    "X-API-KEY": key,
+  };
+  const resp = await fetch(url, { headers });
+  if (!resp.ok) throw new Error(`CEIS status ${resp.status}`);
+  const data = await resp.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchComplianceCNEP(cnpjDigits: string, key: string): Promise<any[]> {
+  const url = `https://api.portaldatransparencia.gov.br/api/cnep?cpfCnpj=${cnpjDigits}&pagina=1&tamanho=100`;
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "chave-api-dados": key,
+    chave: key,
+    "X-API-KEY": key,
+  };
+  const resp = await fetch(url, { headers });
+  if (!resp.ok) throw new Error(`CNEP status ${resp.status}`);
+  const data = await resp.json();
+  return Array.isArray(data) ? data : [];
 }
 
 function base64ToUint8Array(b64: string): Uint8Array {
@@ -326,6 +369,28 @@ export async function parseFREByCNPJ(cnpjInput: string, year?: number): Promise<
   const cnpj = sanitizeCNPJ(cnpjInput);
   const targetYear = year ?? currentYear();
   console.log("cvm:parse:start", { cnpj, year: targetYear });
+  let complianceBlock: FRESummary["compliance"] | undefined = undefined;
+  try {
+    const apiKey = getPortalApiKey();
+    if (!apiKey) {
+      complianceBlock = { disabled: true };
+    } else {
+      const [rCeis, rCnep] = await Promise.allSettled([
+        fetchComplianceCEIS(cnpj, apiKey),
+        fetchComplianceCNEP(cnpj, apiKey),
+      ]);
+      const ceis = rCeis.status === "fulfilled" ? rCeis.value : [];
+      const cnep = rCnep.status === "fulfilled" ? rCnep.value : [];
+      const errMsg = [
+        rCeis.status === "rejected" ? String((rCeis as any).reason && (rCeis as any).reason.message || (rCeis as any).reason) : "",
+        rCnep.status === "rejected" ? String((rCnep as any).reason && (rCnep as any).reason.message || (rCnep as any).reason) : "",
+      ].filter(Boolean).join(" | ");
+      complianceBlock = { ceis, cnep, error: errMsg || undefined };
+    }
+  } catch (e: any) {
+    console.log("cvm:compliance:error", String(e && e.message || e));
+    complianceBlock = { error: String(e && e.message || e) };
+  }
   const zipBlob = await fetchZipBlob("FRE", targetYear);
   console.log("cvm:parse:zip", { size: zipBlob.size });
   const JSZipMod = await import("jszip");
@@ -390,7 +455,7 @@ export async function parseFREByCNPJ(cnpjInput: string, year?: number): Promise<
       console.log("cvm:parse:file-error", { name, error: String(e && e.message || e) });
     }
   }
-  const summary: FRESummary = { cnpj, year: targetYear, files };
+  const summary: FRESummary = { cnpj, year: targetYear, files, compliance: complianceBlock };
   try {
     saveReportLocal(summary);
   } catch {}

@@ -6,7 +6,8 @@ import { ExportButton } from "@/components/cvm/ExportButton";
 import { SearchForm } from "@/components/cvm/SearchForm";
 import { useCvmData } from "@/hooks/useCvmData";
 import { Input } from "@/components/ui/input";
-import { clearAllMemory } from "@/lib/cvm-parser";
+import { clearAllMemory, loadReportLocal } from "@/lib/cvm-parser";
+import { Settings, Info } from "lucide-react";
 
 export default function Dashboard() {
   const { cnpj, year, setYear, limparCnpj, consultar, importarZip, carregarCache, exportarCSV, zipUrl, files, loading, error, errorInfo, current } =
@@ -24,6 +25,15 @@ export default function Dashboard() {
     "Passivos (Debêntures)",
     "Diversidade (ESG)",
   ]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [apiKey, setApiKey] = useState<string>("");
+  const [showKeyInfo, setShowKeyInfo] = useState(false);
+  useEffect(() => {
+    try {
+      const k = window.localStorage.getItem("DiligenceGo:PortalTransparencia:APIKey");
+      if (k) setApiKey(k);
+    } catch {}
+  }, []);
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -116,7 +126,14 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 space-y-6 mx-auto max-w-4xl">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Configurações"
+          className="px-3 py-2 rounded-md border bg-white"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
         <div className="w-full sm:w-auto">
           <ExportButton
             isPremium={true}
@@ -176,6 +193,56 @@ export default function Dashboard() {
                 <input type="file" accept=".zip" onChange={(e) => e.target.files && importarZip(e.target.files[0])} className="hidden" />
               </label>
               <button onClick={carregarCache} className="underline">Carregar cache</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setSettingsOpen(false)} />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 space-y-4 z-50 w-[92vw] max-w-md">
+            <div className="text-base font-semibold">Configurações</div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">API-KEY do Portal da Transparência</label>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="Insira sua chave pessoal"
+                />
+                <button
+                  onClick={() => setShowKeyInfo((v) => !v)}
+                  aria-label="Informações"
+                  className="px-3 py-2 rounded-md border bg-white"
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+              </div>
+              {showKeyInfo && (
+                <div className="text-xs text-neutral-700 border rounded-md p-2 bg-[var(--surface)]">
+                  <div><a href="https://api.portaldatransparencia.gov.br/" target="_blank" rel="noopener noreferrer" className="underline">https://api.portaldatransparencia.gov.br/</a></div>
+                  <div className="mt-1">Passo a passo:</div>
+                  <div>1. Faça login com Gov.br</div>
+                  <div>2. Vá em Minha Conta</div>
+                  <div>3. Gere a sua Chave</div>
+                  <div className="mt-1">Por que é seguro? A chave é pessoal e fica guardada apenas no seu dispositivo. Usar a sua própria chave garante que não haja limites de consulta e que o acesso seja direto e oficial junto ao Governo Federal.</div>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => {
+                  try {
+                    window.localStorage.setItem("DiligenceGo:PortalTransparencia:APIKey", apiKey.trim());
+                  } catch {}
+                  setSettingsOpen(false);
+                }}
+                className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
+              >
+                Salvar
+              </button>
+              <button onClick={() => setSettingsOpen(false)} className="px-3 py-2 rounded-md border">Fechar</button>
             </div>
           </div>
         </div>
@@ -457,6 +524,13 @@ function buildReportText(sections: string[], meta: { cnpj: string; year: number 
   lines.push(`Gerado em: ${dh}`);
   lines.push(`CNPJ: ${meta.cnpj}`);
   lines.push(`Ano: ${meta.year}`);
+  try {
+    const summary = loadReportLocal(meta.cnpj, meta.year);
+    const comp = summary?.compliance;
+    if (comp && comp.disabled) {
+      lines.push(`Módulo de Compliance desativado (Chave API ausente)`);
+    }
+  } catch {}
   lines.push("");
   for (const sec of sections) {
     lines.push(`== ${sec} ==`);
@@ -538,6 +612,50 @@ function generateProfessionalReport(sections: string[], meta: { cnpj: string; ye
   if (sections.includes("Diversidade (ESG)")) {
     content += section("Diversidade (ESG)", `<div style="color:#6b7280;">Dados não disponíveis no conjunto atual.</div>`);
   }
+  // Compliance sancionatória
+  try {
+    const summary = loadReportLocal(meta.cnpj, meta.year);
+    const comp = summary?.compliance;
+    let compHtml = "";
+    if (!comp || comp.disabled) {
+      compHtml = `<div style="padding:12px;border-radius:8px;background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;">Módulo de Compliance desativado (Chave API ausente).</div>`;
+    } else if ((comp?.ceis?.length || 0) === 0 && (comp?.cnep?.length || 0) === 0) {
+      compHtml = `<div style="padding:12px;border-radius:8px;background:#E6F9EA;color:#065F46;border:1px solid #34D399;font-weight:600;">✅ CONFORMIDADE: O CNPJ pesquisado não possui registos ativos nos cadastros de sanções federais (CEIS/CNEP).</div>`;
+    } else {
+      const headers = ["Tipo de Sanção","Órgão Sancionador","Vigência/Data"];
+      function pick(row: any, keys: string[]): string {
+        for (const k of keys) {
+          if (row && typeof row[k] !== "undefined" && String(row[k]).trim()) return String(row[k]);
+        }
+        return "";
+      }
+      function fmtDateLike(s: string): string {
+        const t = String(s || "").trim();
+        if (!t) return "";
+        const m = t.match(/^(\d{4})[-\/](\d{2})[-\/](\d{2})/);
+        if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+        const m2 = t.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})/);
+        if (m2) return `${m2[1]}/${m2[2]}/${m2[3]}`;
+        return t;
+      }
+      const rowsCeis = (comp?.ceis || []).map((r) => [
+        pick(r, ["tipoSancao","situacao","tipo","modalidade"]),
+        pick(r, ["orgaoSancionador","orgao","entidade","origem"]),
+        fmtDateLike(pick(r, ["vigencia","dataInicio","dataPublicacao","data","dataFim"])),
+      ]);
+      const rowsCnep = (comp?.cnep || []).map((r) => [
+        pick(r, ["tipoSancao","tipo","natureza"]),
+        pick(r, ["orgaoSancionador","orgao","entidade","origem"]),
+        fmtDateLike(pick(r, ["vigencia","dataInicio","dataPublicacao","data","dataFim"])),
+      ]);
+      const rows = [...rowsCeis, ...rowsCnep].filter((r) => r.some((c) => String(c).trim()));
+      const dangerHead = `<thead><tr>${headers.map((h) => `<th style="text-align:left;padding:8px;border-bottom:1px solid #ef4444;color:#b91c1c;font-weight:700;">${h}</th>`).join("")}</tr></thead>`;
+      const body = `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td style="padding:8px;border-bottom:1px solid #fde68a;background:#fff7ed;">${String(c)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+      compHtml = `<div style="margin-top:8px;">${rows.length ? `<table style="width:100%;border-collapse:collapse;margin-top:8px;margin-bottom:16px;">${dangerHead}${body}</table>` : `<div style="color:#6b7280;">Nenhum detalhe disponível.</div>`}</div>`;
+      if (comp?.error) compHtml += `<div style="font-size:12px;color:#6b7280;">Aviso: ${comp.error}</div>`;
+    }
+    content += section("AUDITORIA DE COMPLIANCE SANCIONATÓRIA", compHtml);
+  } catch {}
   const html = `<!doctype html>
   <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Relatório DiligenceGo</title>
   <style>${baseStyle}</style></head><body>
