@@ -34,6 +34,12 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
     return list;
   }, [selected, headers]);
 
+  function truncateWords(text: string, maxWords: number): string {
+    const words = String(text || "").trim().split(/\s+/);
+    if (words.length <= maxWords) return text;
+    return words.slice(0, maxWords).join(" ") + " …";
+  }
+
   function openDetails(row: string[], idx: number) {
     setSelected(row);
     setSelectedIndex(idx);
@@ -72,7 +78,9 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
                 key={i}
                 className={`w-full text-left border-b pb-2 last:border-0 rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] ${
                   selectedIndex === i
-                    ? "bg-[var(--color-primary)]/15 border-2 border-[var(--color-primary)]"
+                    ? open
+                      ? "bg-yellow-200 border-2 border-yellow-400"
+                      : "bg-[var(--color-primary)]/15 border-2 border-[var(--color-primary)]"
                     : "hover:bg-[var(--green-100)]"
                 }`}
                 onClick={() => openDetails(r, i)}
@@ -99,7 +107,7 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
               {pairs.map((p, idx) => (
                 <div key={idx} className="flex gap-2">
                   <span className="font-semibold">{p.k}</span>
-                  <span className="text-neutral-700">{p.v}</span>
+                  <span className="text-neutral-700">{truncateWords(p.v, 20)}</span>
                 </div>
               ))}
             </div>
