@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [formatPickerOpen, setFormatPickerOpen] = useState(false);
   const [channel, setChannel] = useState<"email" | "whatsapp" | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [selectedSections, setSelectedSections] = useState<string[]>([
     "Resumo Executivo",
     "Governança",
@@ -347,22 +348,44 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   const html = generateProfessionalReport(selectedSections, { cnpj, year: year ?? current }, files as any);
-                  const win = window.open("", "_blank", "noopener,noreferrer");
-                  if (win && win.document) {
-                    win.document.open();
-                    win.document.write(html);
-                    win.document.close();
-                    try { win.focus(); } catch {}
-                  } else {
-                    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-                    const url = URL.createObjectURL(blob);
-                    window.open(url, "_blank", "noopener,noreferrer");
-                    setTimeout(() => URL.revokeObjectURL(url), 30000);
-                  }
+                  setPreviewHtml(html);
                 }}
                 className="px-3 py-2 rounded-md border"
               >
                 Pré-visualizar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewHtml && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setPreviewHtml(null)} />
+          <div className="absolute inset-0 z-50 flex flex-col">
+            <div className="flex-1 bg-white">
+              <iframe
+                title="Pré-visualização do Resumo"
+                srcDoc={previewHtml}
+                className="w-full h-full"
+                sandbox="allow-scripts allow-same-origin"
+              />
+            </div>
+            <div
+              className="border-t bg-white p-3 flex flex-wrap items-center justify-between sm:justify-end gap-3 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]"
+              style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+            >
+              <button
+                onClick={() => { try { window.location.assign("/dashboard"); } catch {} }}
+                className="px-4 py-3 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)] w-full sm:w-auto"
+              >
+                Ir para a Home
+              </button>
+              <button
+                onClick={() => setPreviewHtml(null)}
+                className="px-4 py-3 rounded-md border w-full sm:w-auto"
+              >
+                Fechar Pré-visualização
               </button>
             </div>
           </div>
@@ -619,6 +642,8 @@ function generateProfessionalReport(sections: string[], meta: { cnpj: string; ye
     let compHtml = "";
     if (!comp || comp.disabled) {
       compHtml = `<div style="padding:12px;border-radius:8px;background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;">Módulo de Compliance desativado (Chave API ausente).</div>`;
+    } else if (comp?.error) {
+      compHtml = `<div style="padding:12px;border-radius:8px;background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;">Módulo de Compliance indisponível. ${comp.error}</div>`;
     } else if ((comp?.ceis?.length || 0) === 0 && (comp?.cnep?.length || 0) === 0) {
       compHtml = `<div style="padding:12px;border-radius:8px;background:#E6F9EA;color:#065F46;border:1px solid #34D399;font-weight:600;">✅ CONFORMIDADE: O CNPJ pesquisado não possui registos ativos nos cadastros de sanções federais (CEIS/CNEP).</div>`;
     } else {

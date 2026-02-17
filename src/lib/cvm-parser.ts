@@ -52,13 +52,19 @@ async function fetchComplianceCEIS(cnpjDigits: string, key: string): Promise<any
   const headers: Record<string, string> = {
     Accept: "application/json",
     "chave-api-dados": key,
-    chave: key,
-    "X-API-KEY": key,
   };
+  try {
+    const HttpMod = await import("@capacitor/http").catch(() => null);
+    if (HttpMod && (HttpMod as any).Http) {
+      const res = await (HttpMod as any).Http.get({ url, headers });
+      const data = (res as any)?.data;
+      return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+    }
+  } catch {}
   const resp = await fetch(url, { headers });
   if (!resp.ok) throw new Error(`CEIS status ${resp.status}`);
   const data = await resp.json();
-  return Array.isArray(data) ? data : [];
+  return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
 }
 
 async function fetchComplianceCNEP(cnpjDigits: string, key: string): Promise<any[]> {
@@ -66,13 +72,19 @@ async function fetchComplianceCNEP(cnpjDigits: string, key: string): Promise<any
   const headers: Record<string, string> = {
     Accept: "application/json",
     "chave-api-dados": key,
-    chave: key,
-    "X-API-KEY": key,
   };
+  try {
+    const HttpMod = await import("@capacitor/http").catch(() => null);
+    if (HttpMod && (HttpMod as any).Http) {
+      const res = await (HttpMod as any).Http.get({ url, headers });
+      const data = (res as any)?.data;
+      return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+    }
+  } catch {}
   const resp = await fetch(url, { headers });
   if (!resp.ok) throw new Error(`CNEP status ${resp.status}`);
   const data = await resp.json();
-  return Array.isArray(data) ? data : [];
+  return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
 }
 
 function base64ToUint8Array(b64: string): Uint8Array {
