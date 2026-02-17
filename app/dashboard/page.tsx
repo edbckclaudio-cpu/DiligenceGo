@@ -112,7 +112,22 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <SearchForm onSearch={(v) => handleSearchRequest(v)} loading={loading} />
+      <SearchForm
+        onSearch={(v) => handleSearchRequest(v)}
+        loading={loading}
+        canShare={files.length > 0}
+        onShareEmail={() => {
+          const textContent = buildFullText(files as any, cnpj, year ?? current);
+          const subject = `DiligenceGo relatório ${cnpj} ${year ?? current}`;
+          const mail = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(textContent)}`;
+          try { window.location.href = mail; } catch {}
+        }}
+        onShareWhatsApp={() => {
+          const textContent = buildFullText(files as any, cnpj, year ?? current);
+          const url = `https://wa.me/?text=${encodeURIComponent(textContent)}`;
+          try { window.open(url, "_blank", "noopener,noreferrer"); } catch { location.assign(url); }
+        }}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <select
@@ -201,7 +216,7 @@ export default function Dashboard() {
           <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setFormatPickerOpen(false)} />
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 space-y-4 z-50 w-[92vw] max-w-md max-h-[80vh] overflow-auto">
             <div className="text-base font-semibold">Formato de envio</div>
-            <div className="text-sm text-neutral-600">Deseja enviar em texto no corpo ou em tabela (.csv/.txt)?</div>
+            <div className="text-sm text-neutral-600">Envio somente em texto organizado.</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 onClick={() => {
@@ -218,33 +233,9 @@ export default function Dashboard() {
                     proceedNewSearch();
                   }
                 }}
-                className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
+                className="px-3 py-2 rounded-md bg-[#1818AB] text-white"
               >
-                Texto (corpo)
-              </button>
-              <button
-                onClick={async () => {
-                  setFormatPickerOpen(false);
-                  const csvContent = buildDelimitedContent(files as any, ";");
-                  const fname = `DiligenceGo_${cnpj}_${year ?? current}.csv`;
-                  await shareFile(csvContent, "text/csv", fname);
-                  proceedNewSearch();
-                }}
-                className="px-3 py-2 rounded-md bg-neutral-900 text-white"
-              >
-                Tabela (.csv)
-              </button>
-              <button
-                onClick={async () => {
-                  setFormatPickerOpen(false);
-                  const txtContent = buildDelimitedContent(files as any, ";");
-                  const fname = `DiligenceGo_${cnpj}_${year ?? current}.txt`;
-                  await shareFile(txtContent, "text/plain", fname);
-                  proceedNewSearch();
-                }}
-                className="px-3 py-2 rounded-md border"
-              >
-                Tabela (.txt)
+                Enviar texto
               </button>
               <button
                 onClick={() => setFormatPickerOpen(false)}

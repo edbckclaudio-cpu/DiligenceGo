@@ -1,9 +1,21 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, LoaderCircle } from "lucide-react";
+import { Search, LoaderCircle, Mail, MessageCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
-export function SearchForm({ onSearch, loading = false }: { onSearch: (cnpj: string) => void; loading?: boolean }) {
+export function SearchForm({
+  onSearch,
+  loading = false,
+  canShare = false,
+  onShareEmail,
+  onShareWhatsApp
+}: {
+  onSearch: (cnpj: string) => void;
+  loading?: boolean;
+  canShare?: boolean;
+  onShareEmail?: () => void;
+  onShareWhatsApp?: () => void;
+}) {
   const [digits, setDigits] = useState("");
   const formatted = useMemo(() => {
     const g = [2, 3, 3, 4, 2];
@@ -44,6 +56,22 @@ export function SearchForm({ onSearch, loading = false }: { onSearch: (cnpj: str
         >
           {loading ? <LoaderCircle className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
           {loading ? "Consultando..." : "Consultar"}
+        </Button>
+        <Button
+          onClick={() => onShareEmail && onShareEmail()}
+          className="h-10 px-3 text-sm w-full sm:w-auto bg-[#1818AB] text-white hover:opacity-90"
+          disabled={!canShare || loading}
+        >
+          <Mail className="w-4 h-4 mr-2" />
+          Enviar por E-mail
+        </Button>
+        <Button
+          onClick={() => onShareWhatsApp && onShareWhatsApp()}
+          className="h-10 px-3 text-sm w-full sm:w-auto bg-[#1818AB] text-white hover:opacity-90"
+          disabled={!canShare || loading}
+        >
+          <MessageCircle className="w-4 h-4 mr-2" />
+          Enviar por WhatsApp
         </Button>
       </div>
       <p className="text-xs text-slate-500">Dados processados localmente. Fonte: Portal de Dados Abertos CVM.</p>
