@@ -228,7 +228,7 @@ export default function Dashboard() {
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setReportOpen(false)} />
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 space-y-4 z-50 w-[92vw] max-w-2xl max-h-[80vh] overflow-auto">
-            <div className="text-base font-semibold">Gerar Relatório</div>
+            <div className="text-base font-semibold">Gerar Resumo</div>
             <div className="text-sm text-neutral-600">Selecione as seções a incluir.</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {["Resumo Executivo","Governança","Compliance/Antecedentes","Estrutura Acionária","Passivos (Debêntures)","Diversidade (ESG)"].map((sec) => {
@@ -252,17 +252,7 @@ export default function Dashboard() {
               })}
             </div>
             <div className="text-sm text-neutral-600">Compartilhar</div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                onClick={async () => {
-                  const html = generateProfessionalReport(selectedSections, { cnpj, year: year ?? current }, files as any);
-                  const filename = `Relatorio_DiligenceGo_${cnpj}_${year ?? current}.html`;
-                  await shareFile(html, "text/html", filename);
-                }}
-                className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-              >
-                HTML (arquivo)
-              </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 onClick={() => {
                   const text = buildReportText(selectedSections, { cnpj, year: year ?? current }, files as any);
