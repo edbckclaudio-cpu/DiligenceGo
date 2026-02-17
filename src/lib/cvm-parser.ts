@@ -48,43 +48,69 @@ function getPortalApiKey(): string | null {
 }
 
 async function fetchComplianceCEIS(cnpjDigits: string, key: string): Promise<any[]> {
-  const url = `https://api.portaldatransparencia.gov.br/api/ceis?cpfCnpj=${cnpjDigits}&pagina=1&tamanho=100`;
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    "chave-api-dados": key,
-  };
+  const base = `https://api.portaldatransparencia.gov.br/api-de-dados/ceis`;
+  const url = `${base}?cpfCnpj=${cnpjDigits}&pagina=1&itens=100`;
+  const headers: Record<string, string> = { Accept: "application/json", "chave-api-dados": key };
+  let isNative = false;
+  try {
+    const core = await import("@capacitor/core");
+    const Capacitor = (core as any).Capacitor || (core as any).default || null;
+    if (Capacitor && typeof Capacitor.isNativePlatform === "function") isNative = !!Capacitor.isNativePlatform();
+  } catch {}
   try {
     const HttpMod = await import("@capacitor/http").catch(() => null);
-    if (HttpMod && (HttpMod as any).Http) {
-      const res = await (HttpMod as any).Http.get({ url, headers });
+    const CapHttp = HttpMod && (HttpMod as any).Http ? (HttpMod as any).Http : null;
+    if (isNative && CapHttp) {
+      const res = await CapHttp.get({ url, headers, connectTimeout: 15000, readTimeout: 30000 });
+      const status = (res as any)?.status ?? 0;
       const data = (res as any)?.data;
+      if (status < 200 || status >= 300) throw new Error(`CEIS status ${status} ${url}`);
       return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
     }
-  } catch {}
-  const resp = await fetch(url, { headers });
-  if (!resp.ok) throw new Error(`CEIS status ${resp.status}`);
-  const data = await resp.json();
-  return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+  } catch (e: any) {
+    if (isNative) throw e;
+  }
+  try {
+    const resp = await fetch(url, { headers });
+    if (!resp.ok) throw new Error(`CEIS status ${resp.status} ${url}`);
+    const data = await resp.json();
+    return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+  } catch (e: any) {
+    throw new Error(`CEIS falha de rede/CORS: ${String(e && e.message || e)} ${url}`);
+  }
 }
 
 async function fetchComplianceCNEP(cnpjDigits: string, key: string): Promise<any[]> {
-  const url = `https://api.portaldatransparencia.gov.br/api/cnep?cpfCnpj=${cnpjDigits}&pagina=1&tamanho=100`;
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    "chave-api-dados": key,
-  };
+  const base = `https://api.portaldatransparencia.gov.br/api-de-dados/cnep`;
+  const url = `${base}?cpfCnpj=${cnpjDigits}&pagina=1&itens=100`;
+  const headers: Record<string, string> = { Accept: "application/json", "chave-api-dados": key };
+  let isNative = false;
+  try {
+    const core = await import("@capacitor/core");
+    const Capacitor = (core as any).Capacitor || (core as any).default || null;
+    if (Capacitor && typeof Capacitor.isNativePlatform === "function") isNative = !!Capacitor.isNativePlatform();
+  } catch {}
   try {
     const HttpMod = await import("@capacitor/http").catch(() => null);
-    if (HttpMod && (HttpMod as any).Http) {
-      const res = await (HttpMod as any).Http.get({ url, headers });
+    const CapHttp = HttpMod && (HttpMod as any).Http ? (HttpMod as any).Http : null;
+    if (isNative && CapHttp) {
+      const res = await CapHttp.get({ url, headers, connectTimeout: 15000, readTimeout: 30000 });
+      const status = (res as any)?.status ?? 0;
       const data = (res as any)?.data;
+      if (status < 200 || status >= 300) throw new Error(`CNEP status ${status} ${url}`);
       return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
     }
-  } catch {}
-  const resp = await fetch(url, { headers });
-  if (!resp.ok) throw new Error(`CNEP status ${resp.status}`);
-  const data = await resp.json();
-  return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+  } catch (e: any) {
+    if (isNative) throw e;
+  }
+  try {
+    const resp = await fetch(url, { headers });
+    if (!resp.ok) throw new Error(`CNEP status ${resp.status} ${url}`);
+    const data = await resp.json();
+    return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+  } catch (e: any) {
+    throw new Error(`CNEP falha de rede/CORS: ${String(e && e.message || e)} ${url}`);
+  }
 }
 
 function base64ToUint8Array(b64: string): Uint8Array {
