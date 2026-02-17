@@ -52,23 +52,26 @@ async function fetchComplianceCEIS(cnpjDigits: string, key: string): Promise<any
   const url = `${base}?cpfCnpj=${cnpjDigits}&pagina=1&itens=100`;
   const headers: Record<string, string> = { Accept: "application/json", "chave-api-dados": key };
   let isNative = false;
+  let capHttp: any = null;
   try {
     const core = await import("@capacitor/core");
     const Capacitor = (core as any).Capacitor || (core as any).default || null;
     if (Capacitor && typeof Capacitor.isNativePlatform === "function") isNative = !!Capacitor.isNativePlatform();
+    capHttp = (core as any).CapacitorHttp || null;
   } catch {}
-  try {
+  if (!capHttp) {
     const HttpMod = await import("@capacitor/http").catch(() => null);
-    const CapHttp = HttpMod && (HttpMod as any).Http ? (HttpMod as any).Http : null;
-    if (isNative && CapHttp) {
-      const res = await CapHttp.get({ url, headers, connectTimeout: 15000, readTimeout: 30000 });
-      const status = (res as any)?.status ?? 0;
-      const data = (res as any)?.data;
-      if (status < 200 || status >= 300) throw new Error(`CEIS status ${status} ${url}`);
-      return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+    capHttp = HttpMod && ((HttpMod as any).Http || (HttpMod as any).CapacitorHttp) ? ((HttpMod as any).Http || (HttpMod as any).CapacitorHttp) : null;
+  }
+  if (isNative) {
+    if (!capHttp || typeof capHttp.request !== "function") {
+      throw new Error("HTTP nativo indisponível ou incompatível (@capacitor/http).");
     }
-  } catch (e: any) {
-    if (isNative) throw e;
+    const res = await capHttp.request({ method: "GET", url, headers, connectTimeout: 15000, readTimeout: 30000 });
+    const status = (res as any)?.status ?? 0;
+    const data = (res as any)?.data;
+    if (status < 200 || status >= 300) throw new Error(`CEIS status ${status} ${url}`);
+    return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
   }
   try {
     const resp = await fetch(url, { headers });
@@ -85,23 +88,26 @@ async function fetchComplianceCNEP(cnpjDigits: string, key: string): Promise<any
   const url = `${base}?cpfCnpj=${cnpjDigits}&pagina=1&itens=100`;
   const headers: Record<string, string> = { Accept: "application/json", "chave-api-dados": key };
   let isNative = false;
+  let capHttp: any = null;
   try {
     const core = await import("@capacitor/core");
     const Capacitor = (core as any).Capacitor || (core as any).default || null;
     if (Capacitor && typeof Capacitor.isNativePlatform === "function") isNative = !!Capacitor.isNativePlatform();
+    capHttp = (core as any).CapacitorHttp || null;
   } catch {}
-  try {
+  if (!capHttp) {
     const HttpMod = await import("@capacitor/http").catch(() => null);
-    const CapHttp = HttpMod && (HttpMod as any).Http ? (HttpMod as any).Http : null;
-    if (isNative && CapHttp) {
-      const res = await CapHttp.get({ url, headers, connectTimeout: 15000, readTimeout: 30000 });
-      const status = (res as any)?.status ?? 0;
-      const data = (res as any)?.data;
-      if (status < 200 || status >= 300) throw new Error(`CNEP status ${status} ${url}`);
-      return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+    capHttp = HttpMod && ((HttpMod as any).Http || (HttpMod as any).CapacitorHttp) ? ((HttpMod as any).Http || (HttpMod as any).CapacitorHttp) : null;
+  }
+  if (isNative) {
+    if (!capHttp || typeof capHttp.request !== "function") {
+      throw new Error("HTTP nativo indisponível ou incompatível (@capacitor/http).");
     }
-  } catch (e: any) {
-    if (isNative) throw e;
+    const res = await capHttp.request({ method: "GET", url, headers, connectTimeout: 15000, readTimeout: 30000 });
+    const status = (res as any)?.status ?? 0;
+    const data = (res as any)?.data;
+    if (status < 200 || status >= 300) throw new Error(`CNEP status ${status} ${url}`);
+    return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
   }
   try {
     const resp = await fetch(url, { headers });
