@@ -646,11 +646,46 @@ function generateProfessionalReport(sections: string[], meta: { cnpj: string; ye
       compHtml = `<div style="padding:12px;border-radius:8px;background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;">Módulo de Compliance indisponível. ${comp.error}</div>`;
     } else if ((comp?.ceis?.length || 0) === 0 && (comp?.cnep?.length || 0) === 0) {
       compHtml = `<div style="padding:12px;border-radius:8px;background:#E6F9EA;color:#065F46;border:1px solid #34D399;font-weight:600;">✅ CONFORMIDADE: O CNPJ pesquisado não possui registos ativos nos cadastros de sanções federais (CEIS/CNEP).</div>`;
+      const diag = (comp as any)?.diagnostics;
+      if (diag && Array.isArray(diag.attempts)) {
+        const head2 = `<thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Fonte</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Status</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Itens</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Com CNPJ</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">URL</th></tr></thead>`;
+        const body2 = `<tbody>${diag.attempts.map((a: any) => `<tr>
+          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${String(a.source || "")}</td>
+          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.status === "number" ? String(a.status) : "-"}</td>
+          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.total === "number" ? String(a.total) : "-"}</td>
+          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.matched === "number" ? String(a.matched) : "-"}</td>
+          <td style="padding:6px;border-bottom:1px solid #e5e7eb;word-break:break-all;">${String(a.url || "")}</td>
+        </tr>`).join("")}</tbody>`;
+        const sup = `<div style="font-size:12px;color:#6b7280;margin-top:6px;">Chave API: ${diag.keyPresent ? "Sim" : "Não"} &nbsp; CNPJ consultado: ${String(diag.cnpj || "")}</div>`;
+        compHtml += `<div style="margin-top:8px;"><div style="font-weight:600;margin-bottom:4px;">Diagnóstico de Compliance</div><table style="width:100%;border-collapse:collapse;">${head2}${body2}</table>${sup}</div>`;
+      }
     } else {
-      const headers = ["Tipo de Sanção","Órgão Sancionador","Vigência/Data"];
-      function pick(row: any, keys: string[]): string {
-        for (const k of keys) {
-          if (row && typeof row[k] !== "undefined" && String(row[k]).trim()) return String(row[k]);
+      const headers = ["Cadastro","Nome","Documento","Órgão Sancionador","Categoria/Tipo","Vigência","Processo","Link"];
+      function pickPath(obj: any, path: string): any {
+        try {
+          const parts = path.split(".");
+          let cur = obj;
+          for (const p of parts) {
+            if (cur == null) return undefined;
+            cur = cur[p];
+          }
+          return cur;
+        } catch {
+          return undefined;
+        }
+      }
+      function pick(row: any, candidates: string[]): string {
+        for (const key of candidates) {
+          const v = key.includes(".") ? pickPath(row, key) : row?.[key];
+          if (typeof v === "string" && v.trim()) return v;
+          if (typeof v === "number") return String(v);
+          if (v && typeof v === "object") {
+            if (typeof v.nome === "string" && v.nome.trim()) {
+              const uf = typeof v.uf === "string" && v.uf.trim() ? ` - ${v.uf}` : "";
+              return `${v.nome}${uf}`;
+            }
+            if (typeof v.tipo === "string" && v.tipo.trim()) return v.tipo;
+          }
         }
         return "";
       }
@@ -663,21 +698,79 @@ function generateProfessionalReport(sections: string[], meta: { cnpj: string; ye
         if (m2) return `${m2[1]}/${m2[2]}/${m2[3]}`;
         return t;
       }
-      const rowsCeis = (comp?.ceis || []).map((r) => [
-        pick(r, ["tipoSancao","situacao","tipo","modalidade"]),
-        pick(r, ["orgaoSancionador","orgao","entidade","origem"]),
-        fmtDateLike(pick(r, ["vigencia","dataInicio","dataPublicacao","data","dataFim"])),
-      ]);
-      const rowsCnep = (comp?.cnep || []).map((r) => [
-        pick(r, ["tipoSancao","tipo","natureza"]),
-        pick(r, ["orgaoSancionador","orgao","entidade","origem"]),
-        fmtDateLike(pick(r, ["vigencia","dataInicio","dataPublicacao","data","dataFim"])),
-      ]);
-      const rows = [...rowsCeis, ...rowsCnep].filter((r) => r.some((c) => String(c).trim()));
+      function fmtPeriodo(row: any): string {
+        const ini = pick(row, ["sancao.inicioData","sancao.inicio_data","dataInicio","data_inicio","vigencia"]);
+        const fim = pick(row, ["sancao.fimData","sancao.fim_data","dataFim","data_fim"]);
+        const pub = pick(row, ["sancao.publicacao_data","dataPublicacao","data_publicacao","data"]);
+        const iniF = fmtDateLike(ini);
+        const fimF = fmtDateLike(fim);
+        const pubF = fmtDateLike(pub);
+        if (iniF && fimF) return `${iniF} - ${fimF}`;
+        if (iniF) return iniF;
+        if (pubF) return pubF;
+        return "";
+      }
+      function rowKey(r: any): string {
+        const id = pick(r, ["id","codigo","sequencial","identificador","sancao.id"]);
+        const doc = pick(r, ["documentoSancionado","documento","cpfCnpj","cnpj","cnpjSancionado"]);
+        const org = pick(r, ["orgaoSancionador.nome","orgao.nome","entidade","origem"]);
+        const tipo = pick(r, ["sancao.tipo","tipoSancao","situacao","tipo","modalidade","natureza"]);
+        const per = fmtPeriodo(r);
+        return [id || "", doc || "", org || "", tipo || "", per || ""].join("|");
+      }
+      const seen = new Set<string>();
+      const rowsCeis = (comp?.ceis || []).map((r) => {
+        const id = pick(r, ["id","codigo","sequencial","identificador","sancao.id"]);
+        const link = id ? `https://portaldatransparencia.gov.br/sancoes/consulta/${id}` : `https://portaldatransparencia.gov.br/sancoes/consulta?cadastro=1&ordenarPor=nomeSancionado&direcao=asc&cpfCnpj=${meta.cnpj}`;
+        return [
+          "CEIS",
+          pick(r, ["nomeSancionado","pessoaSancionada","nome"]),
+          pick(r, ["documentoSancionado","documento","cpfCnpj","cnpj","cnpjSancionado"]),
+          pick(r, ["orgaoSancionador.nome","orgao.nome","origemInformacao.entidade","entidade","orgaoSancionador","orgao","origem"]),
+          pick(r, ["sancao.tipo","tipoSancao","situacao","tipo","modalidade"]),
+          fmtPeriodo(r),
+          pick(r, ["numeroProcesso","processo","numero","id"]),
+          `<a href="${link}" target="_blank" rel="noopener noreferrer" onclick="try{window.open(this.href,'_blank');return false;}catch(e){return true;}">Abrir</a>`,
+        ];
+      });
+      const rowsCnep = (comp?.cnep || []).map((r) => {
+        const id = pick(r, ["id","codigo","sequencial","identificador","sancao.id"]);
+        const link = id ? `https://portaldatransparencia.gov.br/sancoes/consulta/${id}` : `https://portaldatransparencia.gov.br/sancoes/consulta?cadastro=1&ordenarPor=nomeSancionado&direcao=asc&cpfCnpj=${meta.cnpj}`;
+        return [
+          "CNEP",
+          pick(r, ["nomeSancionado","pessoaSancionada","nome"]),
+          pick(r, ["documentoSancionado","documento","cpfCnpj","cnpj","cnpjSancionado"]),
+          pick(r, ["orgaoSancionador.nome","orgao.nome","origemInformacao.entidade","entidade","orgaoSancionador","orgao","origem"]),
+          pick(r, ["sancao.tipo","tipoSancao","tipo","natureza"]),
+          fmtPeriodo(r),
+          pick(r, ["numeroProcesso","processo","numero","id"]),
+          `<a href="${link}" target="_blank" rel="noopener noreferrer" onclick="try{window.open(this.href,'_blank');return false;}catch(e){return true;}">Abrir</a>`,
+        ];
+      });
+      const merged = [...rowsCeis, ...rowsCnep].filter((r) => r.some((c) => String(c).trim()));
+      const rows = merged.filter((_, idx) => {
+        const key = rowKey((idx < (comp?.ceis?.length || 0)) ? (comp?.ceis || [])[idx] : (comp?.cnep || [])[idx - (comp?.ceis?.length || 0)]);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       const dangerHead = `<thead><tr>${headers.map((h) => `<th style="text-align:left;padding:8px;border-bottom:1px solid #ef4444;color:#b91c1c;font-weight:700;">${h}</th>`).join("")}</tr></thead>`;
       const body = `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td style="padding:8px;border-bottom:1px solid #fde68a;background:#fff7ed;">${String(c)}</td>`).join("")}</tr>`).join("")}</tbody>`;
       compHtml = `<div style="margin-top:8px;">${rows.length ? `<table style="width:100%;border-collapse:collapse;margin-top:8px;margin-bottom:16px;">${dangerHead}${body}</table>` : `<div style="color:#6b7280;">Nenhum detalhe disponível.</div>`}</div>`;
       if (comp?.error) compHtml += `<div style="font-size:12px;color:#6b7280;">Aviso: ${comp.error}</div>`;
+      const diag = (comp as any)?.diagnostics;
+      if (diag && Array.isArray(diag.attempts)) {
+        const head2 = `<thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Fonte</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Status</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Itens</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Com CNPJ</th><th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">URL</th></tr></thead>`;
+        const body2 = `<tbody>${diag.attempts.map((a: any) => `<tr>
+          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${String(a.source || "")}</td>
+          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.status === "number" ? String(a.status) : "-"}</td>
+          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.total === "number" ? String(a.total) : "-"}</td>
+          <td style="padding:6px;border-bottom:1px solid #e5e7eb;">${typeof a.matched === "number" ? String(a.matched) : "-"}</td>
+          <td style="padding:6px;border-bottom:1px solid #e5e7eb;word-break:break-all;">${String(a.url || "")}</td>
+        </tr>`).join("")}</tbody>`;
+        const sup = `<div style="font-size:12px;color:#6b7280;margin-top:6px;">Chave API: ${diag.keyPresent ? "Sim" : "Não"} &nbsp; CNPJ consultado: ${String(diag.cnpj || "")}</div>`;
+        compHtml += `<div style="margin-top:8px;"><div style="font-weight:600;margin-bottom:4px;">Diagnóstico de Compliance</div><table style="width:100%;border-collapse:collapse;">${head2}${body2}</table>${sup}</div>`;
+      }
     }
     content += section("AUDITORIA DE COMPLIANCE SANCIONATÓRIA", compHtml);
   } catch {}

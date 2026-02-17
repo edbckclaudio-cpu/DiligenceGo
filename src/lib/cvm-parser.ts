@@ -4,7 +4,17 @@ export type FRESummary = {
   cnpj: string;
   year: number;
   files: FREFileResult[];
-  compliance?: { ceis?: any[]; cnep?: any[]; disabled?: boolean; error?: string };
+  compliance?: {
+    ceis?: any[];
+    cnep?: any[];
+    disabled?: boolean;
+    error?: string;
+    diagnostics?: {
+      keyPresent: boolean;
+      cnpj: string;
+      attempts: { source: "CEIS" | "CNEP"; url: string; status?: number; total?: number; matched?: number; error?: string }[];
+    };
+  };
 };
 
 export class CVMOfflineError extends Error {
@@ -47,9 +57,12 @@ function getPortalApiKey(): string | null {
   }
 }
 
-async function fetchComplianceCEIS(cnpjDigits: string, key: string): Promise<any[]> {
+async function fetchComplianceCEIS(
+  cnpjDigits: string,
+  key: string,
+  record?: (a: { source: "CEIS" | "CNEP"; url: string; status?: number; total?: number; matched?: number; error?: string }) => void
+): Promise<any[]> {
   const base = `https://api.portaldatransparencia.gov.br/api-de-dados/ceis`;
-  const url = `${base}?cpfCnpj=${cnpjDigits}&pagina=1&itens=100`;
   const headers: Record<string, string> = { Accept: "application/json", "chave-api-dados": key };
   let isNative = false;
   let capHttp: any = null;
@@ -63,29 +76,59 @@ async function fetchComplianceCEIS(cnpjDigits: string, key: string): Promise<any
     const HttpMod = await import("@capacitor/http").catch(() => null);
     capHttp = HttpMod && ((HttpMod as any).Http || (HttpMod as any).CapacitorHttp) ? ((HttpMod as any).Http || (HttpMod as any).CapacitorHttp) : null;
   }
-  if (isNative) {
-    if (!capHttp || typeof capHttp.request !== "function") {
-      throw new Error("HTTP nativo indisponível ou incompatível (@capacitor/http).");
+  const paramSets = [
+    `cpfCnpj=${cnpjDigits}&pagina=1&tamanho=100`,
+    `cpfCnpj=${cnpjDigits}&pagina=1&itens=100`,
+    `cpfCnpjSancionado=${cnpjDigits}&pagina=1&tamanho=100`,
+    `documentoSancionado=${cnpjDigits}&pagina=1&tamanho=100`,
+    `cnpjSancionado=${cnpjDigits}&pagina=1&tamanho=100`,
+  ];
+  const tryFetch = async (u: string): Promise<{ list: any[]; status: number }> => {
+    if (isNative) {
+      if (!capHttp || typeof capHttp.request !== "function") {
+        throw new Error("HTTP nativo indisponível ou incompatível (@capacitor/http).");
+      }
+      const res = await capHttp.request({ method: "GET", url: u, headers, connectTimeout: 15000, readTimeout: 30000 });
+      const status = (res as any)?.status ?? 0;
+      let data = (res as any)?.data;
+      if (typeof data === "string") {
+        try { data = JSON.parse(data); } catch {}
+      } else if (data && typeof (data as any).data === "string") {
+        try { data = JSON.parse((data as any).data); } catch {}
+      }
+      if (status < 200 || status >= 300) throw new Error(`CEIS status ${status} ${u}`);
+      const arr = Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+      return { list: Array.isArray(arr) ? arr : [], status };
     }
-    const res = await capHttp.request({ method: "GET", url, headers, connectTimeout: 15000, readTimeout: 30000 });
-    const status = (res as any)?.status ?? 0;
-    const data = (res as any)?.data;
-    if (status < 200 || status >= 300) throw new Error(`CEIS status ${status} ${url}`);
-    return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
-  }
-  try {
-    const resp = await fetch(url, { headers });
-    if (!resp.ok) throw new Error(`CEIS status ${resp.status} ${url}`);
+    const resp = await fetch(u, { headers });
+    if (!resp.ok) throw new Error(`CEIS status ${resp.status} ${u}`);
     const data = await resp.json();
-    return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
-  } catch (e: any) {
-    throw new Error(`CEIS falha de rede/CORS: ${String(e && e.message || e)} ${url}`);
+    const arr = Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+    return { list: Array.isArray(arr) ? arr : [], status: resp.status };
+  };
+  for (const p of paramSets) {
+    const url = `${base}?${p}`;
+    try {
+      const { list, status } = await tryFetch(url);
+      const filtered = (list || []).filter((row) => containsCnpjDeep(row, cnpjDigits));
+      if (record) record({ source: "CEIS", url, status, total: (list || []).length, matched: filtered.length });
+      if (filtered.length > 0) return filtered;
+      if ((list || []).length > 0) {
+        return list;
+      }
+    } catch (e: any) {
+      if (record) record({ source: "CEIS", url, error: String(e && e.message || e) });
+    }
   }
+  return [];
 }
 
-async function fetchComplianceCNEP(cnpjDigits: string, key: string): Promise<any[]> {
+async function fetchComplianceCNEP(
+  cnpjDigits: string,
+  key: string,
+  record?: (a: { source: "CEIS" | "CNEP"; url: string; status?: number; total?: number; matched?: number; error?: string }) => void
+): Promise<any[]> {
   const base = `https://api.portaldatransparencia.gov.br/api-de-dados/cnep`;
-  const url = `${base}?cpfCnpj=${cnpjDigits}&pagina=1&itens=100`;
   const headers: Record<string, string> = { Accept: "application/json", "chave-api-dados": key };
   let isNative = false;
   let capHttp: any = null;
@@ -99,24 +142,51 @@ async function fetchComplianceCNEP(cnpjDigits: string, key: string): Promise<any
     const HttpMod = await import("@capacitor/http").catch(() => null);
     capHttp = HttpMod && ((HttpMod as any).Http || (HttpMod as any).CapacitorHttp) ? ((HttpMod as any).Http || (HttpMod as any).CapacitorHttp) : null;
   }
-  if (isNative) {
-    if (!capHttp || typeof capHttp.request !== "function") {
-      throw new Error("HTTP nativo indisponível ou incompatível (@capacitor/http).");
+  const paramSets = [
+    `cpfCnpj=${cnpjDigits}&pagina=1&tamanho=100`,
+    `cpfCnpj=${cnpjDigits}&pagina=1&itens=100`,
+    `cpfCnpjSancionado=${cnpjDigits}&pagina=1&tamanho=100`,
+    `documentoSancionado=${cnpjDigits}&pagina=1&tamanho=100`,
+    `cnpjSancionado=${cnpjDigits}&pagina=1&tamanho=100`,
+  ];
+  const tryFetch = async (u: string): Promise<{ list: any[]; status: number }> => {
+    if (isNative) {
+      if (!capHttp || typeof capHttp.request !== "function") {
+        throw new Error("HTTP nativo indisponível ou incompatível (@capacitor/http).");
+      }
+      const res = await capHttp.request({ method: "GET", url: u, headers, connectTimeout: 15000, readTimeout: 30000 });
+      const status = (res as any)?.status ?? 0;
+      let data = (res as any)?.data;
+      if (typeof data === "string") {
+        try { data = JSON.parse(data); } catch {}
+      } else if (data && typeof (data as any).data === "string") {
+        try { data = JSON.parse((data as any).data); } catch {}
+      }
+      if (status < 200 || status >= 300) throw new Error(`CNEP status ${status} ${u}`);
+      const arr = Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+      return { list: Array.isArray(arr) ? arr : [], status };
     }
-    const res = await capHttp.request({ method: "GET", url, headers, connectTimeout: 15000, readTimeout: 30000 });
-    const status = (res as any)?.status ?? 0;
-    const data = (res as any)?.data;
-    if (status < 200 || status >= 300) throw new Error(`CNEP status ${status} ${url}`);
-    return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
-  }
-  try {
-    const resp = await fetch(url, { headers });
-    if (!resp.ok) throw new Error(`CNEP status ${resp.status} ${url}`);
+    const resp = await fetch(u, { headers });
+    if (!resp.ok) throw new Error(`CNEP status ${resp.status} ${u}`);
     const data = await resp.json();
-    return Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
-  } catch (e: any) {
-    throw new Error(`CNEP falha de rede/CORS: ${String(e && e.message || e)} ${url}`);
+    const arr = Array.isArray(data) ? data : (Array.isArray((data || {}).content) ? (data as any).content : []);
+    return { list: Array.isArray(arr) ? arr : [], status: resp.status };
+  };
+  for (const p of paramSets) {
+    const url = `${base}?${p}`;
+    try {
+      const { list, status } = await tryFetch(url);
+      const filtered = (list || []).filter((row) => containsCnpjDeep(row, cnpjDigits));
+      if (record) record({ source: "CNEP", url, status, total: (list || []).length, matched: filtered.length });
+      if (filtered.length > 0) return filtered;
+      if ((list || []).length > 0) {
+        return list;
+      }
+    } catch (e: any) {
+      if (record) record({ source: "CNEP", url, error: String(e && e.message || e) });
+    }
   }
+  return [];
 }
 
 function base64ToUint8Array(b64: string): Uint8Array {
@@ -156,6 +226,32 @@ function detectDelimiter(s: string): string {
 function normHeader(s: string): string {
   const noAccents = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   return noAccents.replace(/[_\-]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function containsCnpjDeep(value: any, cnpjDigits: string): boolean {
+  try {
+    if (value == null) return false;
+    if (typeof value === "string") {
+      const digits = value.replace(/\D+/g, "");
+      return digits === cnpjDigits || (digits.length >= 14 && digits.includes(cnpjDigits));
+    }
+    if (typeof value === "number") {
+      const digits = String(value).replace(/\D+/g, "");
+      return digits === cnpjDigits || (digits.length >= 14 && digits.includes(cnpjDigits));
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (containsCnpjDeep(item, cnpjDigits)) return true;
+      }
+      return false;
+    }
+    if (typeof value === "object") {
+      for (const k of Object.keys(value)) {
+        if (containsCnpjDeep((value as any)[k], cnpjDigits)) return true;
+      }
+    }
+  } catch {}
+  return false;
 }
 
 const CNPJ_HEADER_ALIASES = [
@@ -419,9 +515,14 @@ export async function parseFREByCNPJ(cnpjInput: string, year?: number): Promise<
     if (!apiKey) {
       complianceBlock = { disabled: true };
     } else {
+      const attempts: { source: "CEIS" | "CNEP"; url: string; status?: number; total?: number; matched?: number; error?: string }[] = [];
+      const rec = (a: { source: "CEIS" | "CNEP"; url: string; status?: number; total?: number; matched?: number; error?: string }) => {
+        attempts.push(a);
+        console.log("compliance:attempt", a);
+      };
       const [rCeis, rCnep] = await Promise.allSettled([
-        fetchComplianceCEIS(cnpj, apiKey),
-        fetchComplianceCNEP(cnpj, apiKey),
+        fetchComplianceCEIS(cnpj, apiKey, rec),
+        fetchComplianceCNEP(cnpj, apiKey, rec),
       ]);
       const ceis = rCeis.status === "fulfilled" ? rCeis.value : [];
       const cnep = rCnep.status === "fulfilled" ? rCnep.value : [];
@@ -429,7 +530,7 @@ export async function parseFREByCNPJ(cnpjInput: string, year?: number): Promise<
         rCeis.status === "rejected" ? String((rCeis as any).reason && (rCeis as any).reason.message || (rCeis as any).reason) : "",
         rCnep.status === "rejected" ? String((rCnep as any).reason && (rCnep as any).reason.message || (rCnep as any).reason) : "",
       ].filter(Boolean).join(" | ");
-      complianceBlock = { ceis, cnep, error: errMsg || undefined };
+      complianceBlock = { ceis, cnep, error: errMsg || undefined, diagnostics: { keyPresent: !!apiKey, cnpj, attempts } };
     }
   } catch (e: any) {
     console.log("cvm:compliance:error", String(e && e.message || e));
