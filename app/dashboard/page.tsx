@@ -290,10 +290,18 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   const html = generateProfessionalReport(selectedSections, { cnpj, year: year ?? current }, files as any);
-                  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-                  const url = URL.createObjectURL(blob);
-                  window.open(url, "_blank", "noopener,noreferrer");
-                  setTimeout(() => URL.revokeObjectURL(url), 30000);
+                  const win = window.open("", "_blank", "noopener,noreferrer");
+                  if (win && win.document) {
+                    win.document.open();
+                    win.document.write(html);
+                    win.document.close();
+                    try { win.focus(); } catch {}
+                  } else {
+                    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+                    const url = URL.createObjectURL(blob);
+                    window.open(url, "_blank", "noopener,noreferrer");
+                    setTimeout(() => URL.revokeObjectURL(url), 30000);
+                  }
                 }}
                 className="px-3 py-2 rounded-md border"
               >
@@ -405,11 +413,6 @@ async function shareFile(content: string, mime: string, filename: string): Promi
   try {
     const blob = new Blob([content], { type: `${mime};charset=utf-8` });
     const url = URL.createObjectURL(blob);
-    if (navigator.share) {
-      await navigator.share({ title: filename, text: filename, url });
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
-      return;
-    }
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
