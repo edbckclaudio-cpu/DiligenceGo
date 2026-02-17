@@ -21,7 +21,7 @@ export function TabsTrigger({ value, children }: { value: string; children: Reac
       className={
         active
           ? "px-3 py-3 sm:py-2 text-sm rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-          : "px-3 py-3 sm:py-2 text-sm rounded-md hover:bg-[var(--green-100)]"
+          : "px-3 py-3 sm:py-2 text-sm rounded-md hover:bg-[var(--surface-hover)]"
       }
       aria-pressed={active}
     >

@@ -113,7 +113,7 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
               >
                 Fechar
               </button>
-              <button onClick={shareWhatsApp} className="px-3 py-2 rounded-md bg-green-600 text-white">WhatsApp</button>
+              <button onClick={shareWhatsApp} className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]">WhatsApp</button>
             </div>
           </div>
         </div>

@@ -17,10 +17,11 @@ html, body {
   --green-700: #A2BAA5;
   --green-800: #93AC96;
   --green-900: #839E86;
-  --color-primary: var(--green-600);
-  --color-primary-hover: var(--green-700);
+  --color-primary: #4169E1;
+  --color-primary-hover: #3558C2;
   --color-on-primary: #ffffff;
-  --surface-bg: var(--green-50);
-  --surface: var(--green-50);
-  --surface-border: var(--green-200);
+  --surface-bg: #F5F8FF;
+  --surface: #F5F8FF;
+  --surface-border: #D6E0FF;
+  --surface-hover: #E8F0FF;
 }

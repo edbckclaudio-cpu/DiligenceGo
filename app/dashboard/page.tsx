@@ -216,7 +216,7 @@ export default function Dashboard() {
             <div className="text-sm text-neutral-600">Escolha uma opção para compartilhar a anterior e continuaremos com a nova consulta.</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button onClick={sendEmailThenSearch} className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]">Enviar por E-mail</button>
-              <button onClick={sendWhatsAppThenSearch} className="px-3 py-2 rounded-md bg-green-600 text-white">Enviar por WhatsApp</button>
+              <button onClick={sendWhatsAppThenSearch} className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]">Enviar por WhatsApp</button>
               <button onClick={discardAndSearch} className="px-3 py-2 rounded-md border">Descartar e consultar</button>
               <button onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-md border">Fechar</button>
             </div>
@@ -269,7 +269,7 @@ export default function Dashboard() {
                   const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
                   try { window.open(url, "_blank", "noopener,noreferrer"); } catch { location.assign(url); }
                 }}
-                className="px-3 py-2 rounded-md bg-green-600 text-white"
+                className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
               >
                 WhatsApp (texto)
               </button>
@@ -280,7 +280,7 @@ export default function Dashboard() {
                   const mail = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
                   try { window.location.href = mail; } catch {}
                 }}
-                className="px-3 py-2 rounded-md bg-[#1818AB] text-white"
+                className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
               >
                 E-mail (texto)
               </button>
@@ -326,7 +326,7 @@ export default function Dashboard() {
                     proceedNewSearch();
                   }
                 }}
-                className="px-3 py-2 rounded-md bg-[#1818AB] text-white"
+                className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
               >
                 Enviar texto
               </button>
@@ -407,14 +407,16 @@ async function shareFile(content: string, mime: string, filename: string): Promi
     const url = URL.createObjectURL(blob);
     if (navigator.share) {
       await navigator.share({ title: filename, text: filename, url });
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
       return;
     }
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
   } catch {}
 }
 
@@ -546,6 +548,9 @@ function generateProfessionalReport(sections: string[], meta: { cnpj: string; ye
   const html = `<!doctype html>
   <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Relatório DiligenceGo</title>
   <style>${baseStyle}</style></head><body>
+    <div style="position:fixed;top:12px;right:12px;z-index:9999;">
+      <button onclick="window.close()" style="padding:10px 12px;border-radius:8px;background:#111827;color:#ffffff;border:none;box-shadow:0 2px 6px rgba(0,0,0,0.15);cursor:pointer;">Fechar</button>
+    </div>
     <h1>DiligenceGo - Relatório de Due Diligence</h1>
     <div style="font-size:13px;color:#374151;">Gerado em: ${dh}</div>
     <div style="font-size:13px;color:#374151;">CNPJ: ${meta.cnpj} &nbsp; Ano: ${meta.year}</div>

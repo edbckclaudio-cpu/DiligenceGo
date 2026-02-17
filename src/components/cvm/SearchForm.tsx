@@ -59,7 +59,7 @@ export function SearchForm({
         </Button>
         <Button
           onClick={() => onShareEmail && onShareEmail()}
-          className="h-10 px-3 text-sm w-full sm:w-auto bg-[#1818AB] text-white hover:opacity-90"
+          className="h-10 px-3 text-sm w-full sm:w-auto"
           disabled={!canShare || loading}
         >
           <Mail className="w-4 h-4 mr-2" />
@@ -67,7 +67,7 @@ export function SearchForm({
         </Button>
         <Button
           onClick={() => onShareWhatsApp && onShareWhatsApp()}
-          className="h-10 px-3 text-sm w-full sm:w-auto bg-[#1818AB] text-white hover:opacity-90"
+          className="h-10 px-3 text-sm w-full sm:w-auto"
           disabled={!canShare || loading}
         >
           <MessageCircle className="w-4 h-4 mr-2" />
