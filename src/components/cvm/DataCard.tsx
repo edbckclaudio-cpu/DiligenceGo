@@ -97,7 +97,6 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
             className="absolute inset-0 bg-black/40 z-40"
             onClick={() => {
               setOpen(false);
-              setSelectedIndex(null);
             }}
           />
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 w-[92vw] max-w-md space-y-3 z-50">
@@ -115,7 +114,6 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
               <button
                 onClick={() => {
                   setOpen(false);
-                  setSelectedIndex(null);
                 }}
                 className="px-3 py-2 rounded-md bg-neutral-200"
               >
