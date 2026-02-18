@@ -91,9 +91,9 @@ export function DataCard({
             {rows.map((r, i) => (
               <button
                 key={i}
-                className={`relative w-full text-left rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] ${
+                className={`relative w-full text-left rounded focus:outline-none ${
                   ((lastSelected?.file ?? file) === file && lastSelected?.index === i) || selectedIndex === i
-                    ? "bg-yellow-100 border border-yellow-400 animate-[ringPulse_1.4s_ease-out_infinite] ring-2 ring-yellow-400"
+                    ? "bg-yellow-100 border border-yellow-400 pulse-ring"
                     : "hover:bg-[var(--green-100)] border-b pb-2 last:border-0"
                 }`}
                 onClick={() => openDetails(r, i)}
