@@ -337,7 +337,8 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   setFormatPickerOpen(false);
-                  const textContent = buildFullText(files as any, cnpj, year ?? current);
+                  const snap = loadReportLocal(cnpj, year ?? current)?.files || files;
+                  const textContent = buildFullText(snap as any, cnpj, year ?? current);
                   if (channel === "email") {
                     const subject = `DiligenceGo relatório ${cnpj} ${year ?? current}`;
                     const mail = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(textContent)}`;

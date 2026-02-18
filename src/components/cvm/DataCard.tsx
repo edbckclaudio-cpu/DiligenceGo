@@ -78,16 +78,11 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
                 key={i}
                 className={`relative w-full text-left rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] ${
                   selectedIndex === i
-                    ? open
-                      ? "bg-yellow-200 border border-yellow-400"
-                      : "bg-yellow-100 border border-yellow-300"
+                    ? "bg-yellow-100 border border-yellow-400 animate-[ringPulse_1.4s_ease-out_infinite] ring-2 ring-yellow-400"
                     : "hover:bg-[var(--green-100)] border-b pb-2 last:border-0"
                 }`}
                 onClick={() => openDetails(r, i)}
               >
-                {selectedIndex === i && (
-                  <span className="pointer-events-none absolute inset-0 rounded animate-ping ring-2 ring-yellow-400 ring-offset-2 ring-offset-yellow-100 opacity-80 z-10" />
-                )}
                 <p className="font-semibold">{r.join(" • ")}</p>
               </button>
             ))}
