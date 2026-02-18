@@ -27,9 +27,9 @@ html, body {
 }
 
 @keyframes ringPulse {
-  0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.65); }
-  50% { box-shadow: 0 0 0 6px rgba(234, 179, 8, 0.15); }
-  100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.0); }
+  0% { box-shadow: 0 0 0 0 rgba(65, 105, 225, 0.60); }
+  50% { box-shadow: 0 0 0 10px rgba(65, 105, 225, 0.18); }
+  100% { box-shadow: 0 0 0 0 rgba(65, 105, 225, 0.00); }
 }
 
 .pulse-ring {
@@ -43,8 +43,8 @@ html, body {
   right: -4px;
   bottom: -4px;
   border-radius: inherit;
-  border: 2px solid #eab308; /* yellow-500 */
-  opacity: 0.85;
+  border: 3px solid var(--color-primary);
+  opacity: 0.95;
   pointer-events: none;
-  animation: ringPulse 1.4s ease-out infinite;
+  animation: ringPulse 1.2s ease-out infinite;
 }
