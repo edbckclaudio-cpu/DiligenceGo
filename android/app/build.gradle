@@ -20,27 +20,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    def ksFile = System.getenv("KEYSTORE_FILE")
-    def ksPass = System.getenv("KEYSTORE_PASS")
-    def keyAliasName = System.getenv("KEY_ALIAS")
-    def keyPass = System.getenv("KEY_ALIAS_PASS")
-    if (ksFile && ksPass && keyAliasName && keyPass) {
-        signingConfigs {
-            release {
-                storeFile file(ksFile)
-                storePassword = ksPass
-                keyAlias = keyAliasName
-                keyPassword = keyPass
-            }
-        }
-    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            if (signingConfigs.findByName("release")) {
-                signingConfig signingConfigs.release
-            }
         }
     }
 }
