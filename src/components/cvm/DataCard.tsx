@@ -76,7 +76,7 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
             {rows.map((r, i) => (
               <button
                 key={i}
-                className={`relative overflow-hidden w-full text-left rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] ${
+                className={`relative w-full text-left rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] ${
                   selectedIndex === i
                     ? open
                       ? "bg-yellow-200 border border-yellow-400"
@@ -86,7 +86,7 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
                 onClick={() => openDetails(r, i)}
               >
                 {selectedIndex === i && (
-                  <span className="pointer-events-none absolute inset-0 rounded animate-ping ring-2 ring-yellow-400 opacity-70" />
+                  <span className="pointer-events-none absolute inset-0 rounded animate-ping ring-2 ring-yellow-400 ring-offset-2 ring-offset-yellow-100 opacity-80 z-10" />
                 )}
                 <p className="font-semibold">{r.join(" • ")}</p>
               </button>

@@ -5,7 +5,7 @@ import { DataCard } from "@/components/cvm/DataCard";
 import { ExportButton } from "@/components/cvm/ExportButton";
 import { SearchForm } from "@/components/cvm/SearchForm";
 import { useCvmData } from "@/hooks/useCvmData";
-import { clearAllMemory } from "@/lib/cvm-parser";
+import { clearAllMemory, loadReportLocal } from "@/lib/cvm-parser";
 
 export default function Dashboard() {
   const { cnpj, year, setYear, limparCnpj, consultar, importarZip, carregarCache, exportarCSV, zipUrl, files, loading, error, errorInfo, current } =
@@ -131,13 +131,15 @@ export default function Dashboard() {
         loading={loading}
         canShare={files.length > 0}
         onShareEmail={() => {
-          const textContent = buildFullText(files as any, cnpj, year ?? current);
+          const snap = loadReportLocal(cnpj, year ?? current)?.files || files;
+          const textContent = buildFullText(snap as any, cnpj, year ?? current);
           const subject = `DiligenceGo relatório ${cnpj} ${year ?? current}`;
           const mail = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(textContent)}`;
           try { window.location.href = mail; } catch {}
         }}
         onShareWhatsApp={() => {
-          const textContent = buildFullText(files as any, cnpj, year ?? current);
+          const snap = loadReportLocal(cnpj, year ?? current)?.files || files;
+          const textContent = buildFullText(snap as any, cnpj, year ?? current);
           const url = `https://wa.me/?text=${encodeURIComponent(textContent)}`;
           try { window.open(url, "_blank", "noopener,noreferrer"); } catch { location.assign(url); }
         }}
