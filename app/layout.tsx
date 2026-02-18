@@ -1,7 +1,7 @@
 export const metadata = {
-  title: "DiligenceGo",
-  description: "Consulta e análise de dados da CVM",
-  keywords: ["due diligence", "CVM", "FRE", "PAS", "CNPJ", "Governança", "Litígios", "Sanções"],
+  title: "DiligenceGo — Due Diligence CVM local-first",
+  description: "Realize due diligence com dados da CVM (FRE/PAS), filtrando por CNPJ. Processamento local, exportação, resumo e compartilhamento por WhatsApp/E-mail.",
+  keywords: ["due diligence", "CVM", "FRE", "PAS", "CNPJ", "Governança", "Litígios", "Sanções", "relatório", "consulta", "dados abertos", "compliance"],
   metadataBase: new URL("http://localhost:3000"),
   alternates: { canonical: "/" },
   robots: {
@@ -13,15 +13,15 @@ export const metadata = {
     }
   },
   openGraph: {
-    title: "DiligenceGo",
-    description: "Consulta e análise de dados da CVM com processamento local",
+    title: "DiligenceGo — Due Diligence CVM local-first",
+    description: "Consulta e análise de dados da CVM com processamento local. Resultados agrupados (Governança, Litígios, Sanções) e exportação.",
     url: "http://localhost:3000/",
     siteName: "DiligenceGo",
     type: "website"
   },
   twitter: {
     card: "summary",
-    title: "DiligenceGo",
+    title: "DiligenceGo — Due Diligence CVM local-first",
     description: "Consulta e análise de dados da CVM com processamento local"
   }
 };
@@ -62,7 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   "@type": "Organization",
                   "name": "DiligenceGo",
                   "url": "http://localhost:3000/",
-                  "description": "Consulta e análise de dados da CVM",
+                  "description": "Plataforma de due diligence baseada em dados da CVM (FRE/PAS), com processamento local e exportação.",
                   "contactPoint": {
                     "@type": "ContactPoint",
                     "contactType": "customer service"
@@ -110,7 +110,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {
                   "@type": "Product",
                   "name": "DiligenceGo Premium",
-                  "description": "Plano premium com detalhes de processos, bônus da diretoria e exportação profissional.",
+                  "description": "Plano premium com detalhes de processos, remuneração e exportação profissional.",
                   "brand": { "@type": "Brand", "name": "DiligenceGo" },
                   "offers": {
                     "@type": "Offer",

@@ -118,6 +118,10 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 space-y-6 mx-auto max-w-4xl">
+      <header>
+        <h1 className="text-xl font-semibold">Consulta Due Diligence (CVM)</h1>
+        <p className="text-sm text-neutral-600">Digite o CNPJ, escolha o ano e veja os resultados agrupados em Governança, Litígios e Sanções.</p>
+      </header>
       <div className="flex items-center justify-end gap-2">
         <div className="w-full sm:w-auto">
           <ExportButton
@@ -185,6 +189,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      <h2 className="text-base font-semibold">Resultados</h2>
       <Tabs defaultValue="litigios">
         <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="gov">Governança</TabsTrigger>
