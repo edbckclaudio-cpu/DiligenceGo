@@ -1,7 +1,21 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useState, useMemo } from "react";
 
-export function DataCard({ title, rows, headers = [], file }: { title: string; rows: string[][]; headers?: string[]; file?: string }) {
+export function DataCard({
+  title,
+  rows,
+  headers = [],
+  file,
+  lastSelected,
+  onSelected,
+}: {
+  title: string;
+  rows: string[][];
+  headers?: string[];
+  file?: string;
+  lastSelected?: { file?: string; index: number } | null;
+  onSelected?: (file: string | undefined, index: number) => void;
+}) {
   const [selected, setSelected] = useState<string[] | null>(null);
   const [open, setOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -43,6 +57,7 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
   function openDetails(row: string[], idx: number) {
     setSelected(row);
     setSelectedIndex(idx);
+    try { onSelected && onSelected(file, idx); } catch {}
     setOpen(true);
   }
 
@@ -77,7 +92,7 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
               <button
                 key={i}
                 className={`relative w-full text-left rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] ${
-                  selectedIndex === i
+                  ((lastSelected?.file ?? file) === file && lastSelected?.index === i) || selectedIndex === i
                     ? "bg-yellow-100 border border-yellow-400 animate-[ringPulse_1.4s_ease-out_infinite] ring-2 ring-yellow-400"
                     : "hover:bg-[var(--green-100)] border-b pb-2 last:border-0"
                 }`}

@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [channel, setChannel] = useState<"email" | "whatsapp" | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [lastSelected, setLastSelected] = useState<{ file?: string; index: number } | null>(null);
   const [selectedSections, setSelectedSections] = useState<string[]>([
     "Resumo Executivo",
     "Governança",
@@ -193,19 +194,43 @@ export default function Dashboard() {
 
         <TabsContent value="litigios">
           {groups["Litígios"].map((f) => (
-            <DataCard key={f.file} title={`Processos (FRE) - ${f.file}`} rows={f.rows} headers={f.headers || []} file={f.file} />
+            <DataCard
+              key={f.file}
+              title={`Processos (FRE) - ${f.file}`}
+              rows={f.rows}
+              headers={f.headers || []}
+              file={f.file}
+              lastSelected={lastSelected}
+              onSelected={(file, index) => setLastSelected({ file, index })}
+            />
           ))}
           {groups["Litígios"].length === 0 && <div className="text-sm text-neutral-600">Nenhum dado de litígios.</div>}
         </TabsContent>
         <TabsContent value="gov">
           {groups["Governança"].map((f) => (
-            <DataCard key={f.file} title={`Governança - ${f.file}`} rows={f.rows} headers={f.headers || []} file={f.file} />
+            <DataCard
+              key={f.file}
+              title={`Governança - ${f.file}`}
+              rows={f.rows}
+              headers={f.headers || []}
+              file={f.file}
+              lastSelected={lastSelected}
+              onSelected={(file, index) => setLastSelected({ file, index })}
+            />
           ))}
           {groups["Governança"].length === 0 && <div className="text-sm text-neutral-600">Nenhum dado de governança.</div>}
         </TabsContent>
         <TabsContent value="sancoes">
           {groups["Sancionador"].map((f) => (
-            <DataCard key={f.file} title={`Sancionador - ${f.file}`} rows={f.rows} headers={f.headers || []} file={f.file} />
+            <DataCard
+              key={f.file}
+              title={`Sancionador - ${f.file}`}
+              rows={f.rows}
+              headers={f.headers || []}
+              file={f.file}
+              lastSelected={lastSelected}
+              onSelected={(file, index) => setLastSelected({ file, index })}
+            />
           ))}
           {groups["Sancionador"].length === 0 && <div className="text-sm text-neutral-600">Nenhum dado sancionador.</div>}
         </TabsContent>
@@ -311,7 +336,7 @@ export default function Dashboard() {
               style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
             >
               <button
-                onClick={() => { try { window.location.assign("/dashboard"); } catch {} }}
+                onClick={() => { setPreviewHtml(null); }}
                 className="px-4 py-3 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)] w-full sm:w-auto"
               >
                 Ir para a Home
