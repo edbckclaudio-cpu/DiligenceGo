@@ -76,12 +76,12 @@ export function DataCard({ title, rows, headers = [], file }: { title: string; r
             {rows.map((r, i) => (
               <button
                 key={i}
-                className={`w-full text-left border-b pb-2 last:border-0 rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] ${
+                className={`w-full text-left rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] ${
                   selectedIndex === i
                     ? open
-                      ? "bg-yellow-200 border-2 border-yellow-400"
-                      : "bg-[var(--color-primary)]/15 border-2 border-[var(--color-primary)]"
-                    : "hover:bg-[var(--green-100)]"
+                      ? "bg-yellow-200 border border-yellow-400"
+                      : "bg-yellow-100 border border-yellow-300"
+                    : "hover:bg-[var(--green-100)] border-b pb-2 last:border-0"
                 }`}
                 onClick={() => openDetails(r, i)}
               >
