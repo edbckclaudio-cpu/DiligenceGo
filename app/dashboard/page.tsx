@@ -237,8 +237,7 @@ export default function Dashboard() {
     try {
       const snap = loadReportLocal(cnpj, year ?? current)?.files || files;
       const textContent = buildFullText(snap as any, cnpj, year ?? current);
-      const subject = `DiligenceGo relatório ${cnpj} ${year ?? current}`;
-      await shareTextIntent(textContent, subject);
+      await shareWhatsAppIntent(textContent);
     } catch {}
     proceedNewSearch();
   }
@@ -284,8 +283,7 @@ export default function Dashboard() {
         onShareWhatsApp={async () => {
           const snap = loadReportLocal(cnpj, year ?? current)?.files || files;
           const textContent = buildFullText(snap as any, cnpj, year ?? current);
-          const subject = `DiligenceGo relatório ${cnpj} ${year ?? current}`;
-          await shareTextIntent(textContent, subject);
+          await shareWhatsAppIntent(textContent);
         }}
       />
 
@@ -765,6 +763,21 @@ async function shareTextIntent(text: string, title: string): Promise<void> {
     const mail = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}`;
     window.location.href = mail;
   } catch {}
+}
+
+async function shareWhatsAppIntent(text: string): Promise<void> {
+  const waWeb = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  try {
+    const { Browser } = await import("@capacitor/browser");
+    await (Browser as any).open({ url: waWeb });
+    return;
+  } catch {}
+  try {
+    window.open(waWeb, "_blank", "noopener,noreferrer");
+    return;
+  } catch {
+    location.assign(waWeb);
+  }
 }
 async function shareFile(content: string, mime: string, filename: string): Promise<void> {
   try {
