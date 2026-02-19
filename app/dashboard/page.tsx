@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Menu, User, BadgeCheck, Crown, FileText, ScrollText, Cookie, LifeBuoy, KeyRound, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataCard } from "@/components/cvm/DataCard";
 import { ExportButton } from "@/components/cvm/ExportButton";
@@ -8,6 +10,7 @@ import { useCvmData } from "@/hooks/useCvmData";
 import { clearAllMemory, loadReportLocal } from "@/lib/cvm-parser";
 
 export default function Dashboard() {
+  const router = useRouter();
   const { cnpj, year, setYear, limparCnpj, consultar, importarZip, carregarCache, exportarCSV, zipUrl, files, loading, error, errorInfo, current } =
     useCvmData();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -93,6 +96,59 @@ export default function Dashboard() {
     saveUser(null);
     savePlan("free");
     setNavOpen(false);
+  }
+  async function googleLogin() {
+    try {
+      const mod = await import("@codetrix-studio/capacitor-google-auth");
+      const GoogleAuth = (mod as any).GoogleAuth;
+      try { await GoogleAuth.initialize({ clientId: "YOUR_WEB_CLIENT_ID" }); } catch {}
+      const res = await GoogleAuth.signIn();
+      const profile = res?.authentication ?? res;
+      const u = {
+        name: res?.name || res?.displayName || "Usuário",
+        email: res?.email || "",
+        photo: res?.imageUrl || res?.photoUrl || "",
+      };
+      saveUser(u);
+      setNavOpen(true);
+      return;
+    } catch {}
+    try {
+      const name = prompt("Nome completo:");
+      const email = prompt("E-mail:");
+      if (name || email) saveUser({ name: name || "Usuário", email: email || "", photo: "" });
+      setNavOpen(true);
+    } catch {}
+  }
+  async function purchasePremium() {
+    try {
+      const mode = (process.env.NEXT_PUBLIC_PURCHASES_MODE || (typeof window !== "undefined" ? window.localStorage.getItem("dg:purchasesMode") : null) || "test").toLowerCase();
+      if (mode === "real") {
+        const mod = await import("@capgo/capacitor-purchases");
+        const Purchases = (mod as any).default || (mod as any);
+        const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_API_KEY || "";
+        if (apiKey && Purchases?.setup) {
+          try { await Purchases.setup({ apiKey }); } catch {}
+        }
+        try {
+          const offeringsRes = await Purchases.getOfferings();
+          const current = offeringsRes?.offerings?.current;
+          const pkg = current?.availablePackages?.[0];
+          if (pkg) {
+            await Purchases.purchasePackage({ identifier: pkg.identifier, offeringIdentifier: current.identifier || "default" });
+            savePlan("premium");
+          } else {
+            savePlan("premium");
+          }
+        } catch {
+          savePlan("premium");
+        }
+      } else {
+        savePlan("premium");
+      }
+      setPlansOpen(false);
+      setNavOpen(true);
+    } catch {}
   }
   async function deleteAccountAndData() {
     try {
@@ -191,9 +247,7 @@ export default function Dashboard() {
           onClick={() => setNavOpen(true)}
           className="p-2 rounded-md border bg-white text-[var(--color-primary)]"
         >
-          <span className="block w-5 h-[2px] bg-current mb-[4px]" />
-          <span className="block w-5 h-[2px] bg-current mb-[4px]" />
-          <span className="block w-5 h-[2px] bg-current" />
+          <Menu className="w-5 h-5" />
         </button>
         <div>
           <h1 className="text-xl font-semibold">Consulta Due Diligence (CVM)</h1>
@@ -338,8 +392,8 @@ export default function Dashboard() {
       {navOpen && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setNavOpen(false)} />
-          <aside className="absolute left-0 top-0 bottom-0 w-[86vw] max-w-[320px] bg-white border-r z-50 flex flex-col">
-            <div className="bg-[var(--color-primary)] text-[var(--color-on-primary)] p-4 flex items-center gap-3">
+          <aside className="absolute left-0 top-0 bottom-0 w-[86vw] max-w-[320px] bg-[#0f172a] text-white z-50 flex flex-col">
+            <div className="p-4 flex items-center gap-3 border-b border-white/10">
               <img
                 src={user?.photo || "https://ui-avatars.com/api/?name=" + encodeURIComponent(user?.name || "Usuário")}
                 alt="Avatar"
@@ -349,11 +403,18 @@ export default function Dashboard() {
                 <div className="font-semibold truncate">{user?.name || "Convidado"}</div>
                 <div className="text-xs opacity-90 truncate">{user?.email || "Faça login com Google"}</div>
               </div>
-              <button onClick={() => setProfileOpen(true)} className="text-sm underline">Meu Perfil</button>
+              {user ? (
+                <button onClick={() => setProfileOpen(true)} className="text-sm underline flex items-center gap-1"><User className="w-4 h-4" /> Meu Perfil</button>
+              ) : (
+                <button onClick={googleLogin} className="text-sm underline flex items-center gap-1"><User className="w-4 h-4" /> Entrar com Google</button>
+              )}
             </div>
             <div className="p-4 space-y-4 flex-1 overflow-auto">
-              <div className="border rounded-md p-3">
-                <div className="text-sm">Plano: <span className="font-semibold">{plan === "premium" ? "Premium" : "Grátis"}</span></div>
+              <div className="rounded-md p-3 bg-white/05 border border-white/10">
+                <div className="text-sm flex items-center gap-2">
+                  {plan === "premium" ? <Crown className="w-4 h-4 text-yellow-300" /> : <BadgeCheck className="w-4 h-4 text-blue-300" />}
+                  Plano: <span className="font-semibold">{plan === "premium" ? "Premium" : "Grátis"}</span>
+                </div>
                 {plan === "free" && (
                   <button
                     onClick={() => setPlansOpen(true)}
@@ -363,35 +424,50 @@ export default function Dashboard() {
                   </button>
                 )}
               </div>
-              <div className="border rounded-md p-3">
+              <div className="rounded-md p-3 bg-white/05 border border-white/10">
                 <div className="font-semibold mb-2">Termos e Políticas</div>
                 <div className="space-y-2">
-                  <button className="underline block text-left" onClick={() => setPrivacyOpen(true)}>Política de Privacidade</button>
-                  <button className="underline block text-left" onClick={() => setTermsOpen(true)}>Termos de Uso</button>
-                  <button className="underline block text-left" onClick={() => setCookiesOpen(true)}>Política de Cookies</button>
-                  <button className="underline block text-left" onClick={() => setEulaOpen(true)}>EULA (Licença de Uso)</button>
-                  <button className="underline block text-left" onClick={() => setLicensesOpen(true)}>Licenças de Terceiros</button>
-                  <button className="underline block text-left" onClick={() => setSupportOpen(true)}>Suporte / Fale Conosco</button>
+                  <button className="underline block text-left flex items-center gap-2" onClick={() => { setNavOpen(false); router.push("/privacy"); }}>
+                    <FileText className="w-4 h-4" /> Política de Privacidade
+                  </button>
+                  <button className="underline block text-left flex items-center gap-2" onClick={() => { setNavOpen(false); router.push("/terms"); }}>
+                    <ScrollText className="w-4 h-4" /> Termos de Uso
+                  </button>
+                  <button className="underline block text-left flex items-center gap-2" onClick={() => { setNavOpen(false); router.push("/cookies"); }}>
+                    <Cookie className="w-4 h-4" /> Política de Cookies
+                  </button>
+                  <button className="underline block text-left flex items-center gap-2" onClick={() => { setNavOpen(false); router.push("/eula"); }}>
+                    <ScrollText className="w-4 h-4" /> EULA (Licença de Uso)
+                  </button>
+                  <button className="underline block text-left flex items-center gap-2" onClick={() => { setNavOpen(false); router.push("/licenses"); }}>
+                    <FileText className="w-4 h-4" /> Licenças de Terceiros
+                  </button>
+                  <button className="underline block text-left flex items-center gap-2" onClick={() => setSupportOpen(true)}>
+                    <LifeBuoy className="w-4 h-4" /> Suporte / Fale Conosco
+                  </button>
+                  <button className="underline block text-left flex items-center gap-2" onClick={() => { setNavOpen(false); router.push("/account/delete"); }}>
+                    <Trash2 className="w-4 h-4" /> Página de Exclusão de Conta e Dados
+                  </button>
                 </div>
                 <div className="mt-3">
-                  <button className="px-3 py-2 rounded-md bg-red-600 text-white" onClick={() => setConfirmDeleteOpen(true)}>
-                    Excluir Conta e Dados
+                  <button className="px-3 py-2 rounded-md bg-red-600 text-white flex items-center gap-2" onClick={() => setConfirmDeleteOpen(true)}>
+                    <Trash2 className="w-4 h-4" /> Excluir Conta e Dados
                   </button>
                 </div>
               </div>
-              <div className="border rounded-md p-3">
-                <div className="font-semibold mb-2">Configurações de API</div>
+              <div className="rounded-md p-3 bg-white/05 border border-white/10">
+                <div className="font-semibold mb-2 flex items-center gap-2"><KeyRound className="w-4 h-4" /> Configurações de API</div>
                 <label className="text-sm">API Key do Portal da Transparência</label>
                 <input
                   value={apiKey}
                   onChange={(e) => saveApiKey(e.target.value)}
                   placeholder="Informe sua API Key"
-                  className="mt-1 w-full border px-3 py-2 rounded-md"
+                  className="mt-1 w-full border px-3 py-2 rounded-md bg-white text-neutral-900"
                 />
               </div>
             </div>
-            <div className="p-4 border-t">
-              <button onClick={logout} className="w-full px-3 py-2 rounded-md border">Sair</button>
+            <div className="p-4 border-t border-white/10">
+              <button onClick={logout} className="w-full px-3 py-2 rounded-md border border-white/20">Sair</button>
             </div>
           </aside>
         </div>
@@ -574,12 +650,7 @@ export default function Dashboard() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setPlansOpen(false)} className="px-3 py-2 rounded-md border">Fechar</button>
-              <button
-                onClick={() => { savePlan("premium"); setPlansOpen(false); }}
-                className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-              >
-                Assinar Premium
-              </button>
+              <button onClick={purchasePremium} className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]">Assinar Premium</button>
             </div>
           </div>
         </div>

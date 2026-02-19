@@ -18,7 +18,12 @@
     "Http": {},
     "Browser": {},
     "Share": {},
-    "App": {}
+    "App": {},
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "1027488415010-ka6t6onl1iv6s1lptfg3obr36kj04ud9.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
   },
   "android": {
     "includePlugins": [
@@ -26,7 +31,9 @@
       "Http",
       "Browser",
       "Share",
-      "App"
+      "App",
+      "GoogleAuth",
+      "Purchases"
     ],
     "flavor": "capacitor"
   }
