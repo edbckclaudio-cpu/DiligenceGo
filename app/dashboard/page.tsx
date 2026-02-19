@@ -11,12 +11,26 @@ export default function Dashboard() {
   const { cnpj, year, setYear, limparCnpj, consultar, importarZip, carregarCache, exportarCSV, zipUrl, files, loading, error, errorInfo, current } =
     useCvmData();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [pendingDigits, setPendingDigits] = useState("");
   const [formatPickerOpen, setFormatPickerOpen] = useState(false);
   const [channel, setChannel] = useState<"email" | "whatsapp" | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [lastSelected, setLastSelected] = useState<{ file?: string; index: number } | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [cookiesOpen, setCookiesOpen] = useState(false);
+  const [eulaOpen, setEulaOpen] = useState(false);
+  const [licensesOpen, setLicensesOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [apiOpen, setApiOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string; photo?: string } | null>(null);
+  const [plan, setPlan] = useState<"free" | "premium">("free");
+  const [apiKey, setApiKey] = useState<string>("");
   const [selectedSections, setSelectedSections] = useState<string[]>([
     "Resumo Executivo",
     "Governança",
@@ -30,13 +44,66 @@ export default function Dashboard() {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setDrawerOpen(false);
+        setNavOpen(false);
         setFormatPickerOpen(false);
         setReportOpen(false);
+        setProfileOpen(false);
+        setPlansOpen(false);
+        setPrivacyOpen(false);
+        setTermsOpen(false);
+        setCookiesOpen(false);
+        setEulaOpen(false);
+        setLicensesOpen(false);
+        setSupportOpen(false);
+        setApiOpen(false);
+        setConfirmDeleteOpen(false);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    try {
+      const u = window.localStorage.getItem("dg:user");
+      if (u) setUser(JSON.parse(u));
+      const p = window.localStorage.getItem("dg:plan");
+      if (p === "premium" || p === "free") setPlan(p as any);
+      const ak = window.localStorage.getItem("dg:apiKey");
+      if (ak) setApiKey(ak);
+    } catch {}
+  }, []);
+
+  function saveUser(u: { name: string; email: string; photo?: string } | null) {
+    setUser(u);
+    try {
+      if (u) window.localStorage.setItem("dg:user", JSON.stringify(u));
+      else window.localStorage.removeItem("dg:user");
+    } catch {}
+  }
+  function savePlan(p: "free" | "premium") {
+    setPlan(p);
+    try { window.localStorage.setItem("dg:plan", p); } catch {}
+  }
+  function saveApiKey(k: string) {
+    setApiKey(k);
+    try { window.localStorage.setItem("dg:apiKey", k); } catch {}
+  }
+  async function logout() {
+    saveUser(null);
+    savePlan("free");
+    setNavOpen(false);
+  }
+  async function deleteAccountAndData() {
+    try {
+      saveUser(null);
+      savePlan("free");
+      saveApiKey("");
+      await clearAllMemory();
+    } catch {}
+    setConfirmDeleteOpen(false);
+    setNavOpen(false);
+  }
 
   function classifyFile(name: string): "Governança" | "Litígios" | "Sancionador" | "Remuneração" {
     const n = name.toLowerCase();
@@ -118,9 +185,20 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 space-y-6 mx-auto max-w-4xl">
-      <header>
-        <h1 className="text-xl font-semibold">Consulta Due Diligence (CVM)</h1>
-        <p className="text-sm text-neutral-600">Digite o CNPJ, escolha o ano e veja os resultados agrupados em Governança, Litígios e Sanções.</p>
+      <header className="flex items-center gap-3">
+        <button
+          aria-label="Abrir menu"
+          onClick={() => setNavOpen(true)}
+          className="p-2 rounded-md border bg-white text-[var(--color-primary)]"
+        >
+          <span className="block w-5 h-[2px] bg-current mb-[4px]" />
+          <span className="block w-5 h-[2px] bg-current mb-[4px]" />
+          <span className="block w-5 h-[2px] bg-current" />
+        </button>
+        <div>
+          <h1 className="text-xl font-semibold">Consulta Due Diligence (CVM)</h1>
+          <p className="text-sm text-neutral-600">Digite o CNPJ, escolha o ano e veja os resultados agrupados em Governança, Litígios e Sanções.</p>
+        </div>
       </header>
       <div className="flex items-center justify-end gap-2">
         <div className="w-full sm:w-auto">
@@ -257,6 +335,68 @@ export default function Dashboard() {
         </div>
       )}
 
+      {navOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setNavOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-[86vw] max-w-[320px] bg-white border-r z-50 flex flex-col">
+            <div className="bg-[var(--color-primary)] text-[var(--color-on-primary)] p-4 flex items-center gap-3">
+              <img
+                src={user?.photo || "https://ui-avatars.com/api/?name=" + encodeURIComponent(user?.name || "Usuário")}
+                alt="Avatar"
+                className="w-10 h-10 rounded-full border border-white/30"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold truncate">{user?.name || "Convidado"}</div>
+                <div className="text-xs opacity-90 truncate">{user?.email || "Faça login com Google"}</div>
+              </div>
+              <button onClick={() => setProfileOpen(true)} className="text-sm underline">Meu Perfil</button>
+            </div>
+            <div className="p-4 space-y-4 flex-1 overflow-auto">
+              <div className="border rounded-md p-3">
+                <div className="text-sm">Plano: <span className="font-semibold">{plan === "premium" ? "Premium" : "Grátis"}</span></div>
+                {plan === "free" && (
+                  <button
+                    onClick={() => setPlansOpen(true)}
+                    className="mt-2 w-full px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
+                  >
+                    ✨ Assinar Plano Premium
+                  </button>
+                )}
+              </div>
+              <div className="border rounded-md p-3">
+                <div className="font-semibold mb-2">Termos e Políticas</div>
+                <div className="space-y-2">
+                  <button className="underline block text-left" onClick={() => setPrivacyOpen(true)}>Política de Privacidade</button>
+                  <button className="underline block text-left" onClick={() => setTermsOpen(true)}>Termos de Uso</button>
+                  <button className="underline block text-left" onClick={() => setCookiesOpen(true)}>Política de Cookies</button>
+                  <button className="underline block text-left" onClick={() => setEulaOpen(true)}>EULA (Licença de Uso)</button>
+                  <button className="underline block text-left" onClick={() => setLicensesOpen(true)}>Licenças de Terceiros</button>
+                  <button className="underline block text-left" onClick={() => setSupportOpen(true)}>Suporte / Fale Conosco</button>
+                </div>
+                <div className="mt-3">
+                  <button className="px-3 py-2 rounded-md bg-red-600 text-white" onClick={() => setConfirmDeleteOpen(true)}>
+                    Excluir Conta e Dados
+                  </button>
+                </div>
+              </div>
+              <div className="border rounded-md p-3">
+                <div className="font-semibold mb-2">Configurações de API</div>
+                <label className="text-sm">API Key do Portal da Transparência</label>
+                <input
+                  value={apiKey}
+                  onChange={(e) => saveApiKey(e.target.value)}
+                  placeholder="Informe sua API Key"
+                  className="mt-1 w-full border px-3 py-2 rounded-md"
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t">
+              <button onClick={logout} className="w-full px-3 py-2 rounded-md border">Sair</button>
+            </div>
+          </aside>
+        </div>
+      )}
+
       {reportOpen && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setReportOpen(false)} />
@@ -390,6 +530,97 @@ export default function Dashboard() {
               >
                 Fechar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {profileOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setProfileOpen(false)} />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 space-y-3 z-50 w-[92vw] max-w-md">
+            <div className="text-base font-semibold">Meu Perfil</div>
+            <div className="flex items-center gap-3">
+              <img
+                src={user?.photo || "https://ui-avatars.com/api/?name=" + encodeURIComponent(user?.name || "Usuário")}
+                alt="Avatar"
+                className="w-12 h-12 rounded-full border"
+              />
+              <div className="flex-1">
+                <div className="font-semibold">{user?.name || "Convidado"}</div>
+                <div className="text-sm text-neutral-600">{user?.email || "-"}</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setProfileOpen(false)} className="px-3 py-2 rounded-md border">Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {plansOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setPlansOpen(false)} />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 space-y-3 z-50 w-[92vw] max-w-md">
+            <div className="text-base font-semibold">Planos</div>
+            <div className="space-y-2 text-sm">
+              <div className="font-semibold">Premium</div>
+              <ul className="list-disc pl-5">
+                <li>Relatórios ilimitados</li>
+                <li>Compliance automático</li>
+                <li>Suporte priorizado</li>
+                <li>Exportação profissional</li>
+              </ul>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setPlansOpen(false)} className="px-3 py-2 rounded-md border">Fechar</button>
+              <button
+                onClick={() => { savePlan("premium"); setPlansOpen(false); }}
+                className="px-3 py-2 rounded-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
+              >
+                Assinar Premium
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(privacyOpen || termsOpen || cookiesOpen || eulaOpen || licensesOpen || supportOpen) && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 z-40" onClick={() => { setPrivacyOpen(false); setTermsOpen(false); setCookiesOpen(false); setEulaOpen(false); setLicensesOpen(false); setSupportOpen(false); }} />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 space-y-3 z-50 w-[92vw] max-w-2xl max-h-[80vh] overflow-auto">
+            <div className="text-base font-semibold">
+              {privacyOpen ? "Política de Privacidade" : termsOpen ? "Termos de Uso" : cookiesOpen ? "Política de Cookies" : eulaOpen ? "EULA (Licença de Uso)" : licensesOpen ? "Licenças de Terceiros" : "Suporte / Fale Conosco"}
+            </div>
+            <div className="text-sm text-neutral-700 space-y-2">
+              {privacyOpen && (
+                <>
+                  <p>Uso de dados: o app processa dados públicos da CVM (FRE/PAS) localmente. O CNPJ não é enviado a servidores.</p>
+                  <p>API Key local: a chave do Portal da Transparência, quando informada, é armazenada apenas no dispositivo.</p>
+                </>
+              )}
+              {termsOpen && <p>Uso permitido: consulta de dados públicos, geração de relatórios e compartilhamento informacional.</p>}
+              {cookiesOpen && <p>Não utilizamos cookies de rastreamento; armazenamento local usa localStorage/Cache API.</p>}
+              {eulaOpen && <p>Licença de uso pessoal/profissional; sem garantia; sujeito a atualizações.</p>}
+              {licensesOpen && <p>Terceiros: JSZip, PapaParse, Capacitor. Consulte repositórios oficiais para licenças completas.</p>}
+              {supportOpen && <p>Suporte: envie sua dúvida para suporte@diligencego.app (canal de atendimento).</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => { setPrivacyOpen(false); setTermsOpen(false); setCookiesOpen(false); setEulaOpen(false); setLicensesOpen(false); setSupportOpen(false); }} className="px-3 py-2 rounded-md border">Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 z-40" onClick={() => setConfirmDeleteOpen(false)} />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl border p-4 space-y-3 z-50 w-[92vw] max-w-md">
+            <div className="text-base font-semibold">Excluir Conta e Dados</div>
+            <div className="text-sm text-neutral-700">Esta ação remove perfil, assinatura, API Key e resultados em cache. Deseja continuar?</div>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setConfirmDeleteOpen(false)} className="px-3 py-2 rounded-md border">Cancelar</button>
+              <button onClick={deleteAccountAndData} className="px-3 py-2 rounded-md bg-red-600 text-white">Excluir</button>
             </div>
           </div>
         </div>
