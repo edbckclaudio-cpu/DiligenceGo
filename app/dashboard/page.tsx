@@ -223,16 +223,24 @@ export default function Dashboard() {
     setChannel(null);
   }
 
-  function sendEmailThenSearch() {
-    setChannel("email");
-    setDrawerOpen(false);
-    setFormatPickerOpen(true);
+  async function sendEmailThenSearch() {
+    try {
+      const snap = loadReportLocal(cnpj, year ?? current)?.files || files;
+      const textContent = buildFullText(snap as any, cnpj, year ?? current);
+      const subject = `DiligenceGo relatório ${cnpj} ${year ?? current}`;
+      await shareTextIntent(textContent, subject);
+    } catch {}
+    proceedNewSearch();
   }
 
-  function sendWhatsAppThenSearch() {
-    setChannel("whatsapp");
-    setDrawerOpen(false);
-    setFormatPickerOpen(true);
+  async function sendWhatsAppThenSearch() {
+    try {
+      const snap = loadReportLocal(cnpj, year ?? current)?.files || files;
+      const textContent = buildFullText(snap as any, cnpj, year ?? current);
+      const subject = `DiligenceGo relatório ${cnpj} ${year ?? current}`;
+      await shareTextIntent(textContent, subject);
+    } catch {}
+    proceedNewSearch();
   }
 
   function discardAndSearch() {
@@ -267,18 +275,17 @@ export default function Dashboard() {
         onSearch={(v) => handleSearchRequest(v)}
         loading={loading}
         canShare={files.length > 0}
-        onShareEmail={() => {
+        onShareEmail={async () => {
           const snap = loadReportLocal(cnpj, year ?? current)?.files || files;
           const textContent = buildFullText(snap as any, cnpj, year ?? current);
           const subject = `DiligenceGo relatório ${cnpj} ${year ?? current}`;
-          const mail = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(textContent)}`;
-          try { window.location.href = mail; } catch {}
+          await shareTextIntent(textContent, subject);
         }}
-        onShareWhatsApp={() => {
+        onShareWhatsApp={async () => {
           const snap = loadReportLocal(cnpj, year ?? current)?.files || files;
           const textContent = buildFullText(snap as any, cnpj, year ?? current);
-          const url = `https://wa.me/?text=${encodeURIComponent(textContent)}`;
-          try { window.open(url, "_blank", "noopener,noreferrer"); } catch { location.assign(url); }
+          const subject = `DiligenceGo relatório ${cnpj} ${year ?? current}`;
+          await shareTextIntent(textContent, subject);
         }}
       />
 
@@ -742,6 +749,23 @@ function buildFullText(files: any[], cnpj: string, year: number): string {
   return out.join("\n");
 }
 
+async function shareTextIntent(text: string, title: string): Promise<void> {
+  try {
+    const { Share } = await import("@capacitor/share");
+    await (Share as any).share({ title, text, dialogTitle: "Compartilhar consulta" });
+    return;
+  } catch {}
+  try {
+    if ((navigator as any).share) {
+      await (navigator as any).share({ title, text });
+      return;
+    }
+  } catch {}
+  try {
+    const mail = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}`;
+    window.location.href = mail;
+  } catch {}
+}
 async function shareFile(content: string, mime: string, filename: string): Promise<void> {
   try {
     const { Filesystem } = await import("@capacitor/filesystem");

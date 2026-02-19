@@ -68,13 +68,24 @@ export function DataCard({
     return lines.join("\n");
   }
 
-  function shareWhatsApp() {
+  async function shareWhatsApp() {
     const text = buildShareText();
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     try {
+      const { Share } = await import("@capacitor/share");
+      await (Share as any).share({ title: "Consulta DiligenceGo", text, dialogTitle: "Compartilhar" });
+      return;
+    } catch {}
+    try {
+      if ((navigator as any).share) {
+        await (navigator as any).share({ title: "Consulta DiligenceGo", text });
+        return;
+      }
+    } catch {}
+    try {
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
       window.open(url, "_blank", "noopener,noreferrer");
     } catch {
-      location.assign(url);
+      location.assign(`https://wa.me/?text=${encodeURIComponent(text)}`);
     }
   }
 

@@ -33,7 +33,8 @@
       "Share",
       "App",
       "GoogleAuth",
-      "Purchases"
+      "Purchases",
+      "InAppPurchase"
     ],
     "flavor": "capacitor"
   }
