@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatório • DiligenceGo</title>
+<style>
+:root { --blue:#2563eb; --blue-600:#1d4ed8; --border:#dcdcdc; }
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; }
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 16px; }
+.header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; }
+.title { font-weight:700; font-size: 22px; }
+.btn { display:inline-flex; align-items:center; gap:8px; padding: 10px 14px; border-radius: 10px; border: none; background: var(--blue); color:#fff; font-weight: 600; }
+.btn:active { transform: scale(0.98); background: var(--blue-600); }
+.card { border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px; background:#fff; }
+.grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px; }
+.indicator { border:1px solid var(--border); border-radius:10px; padding:12px; text-align:center; }
+.list { display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+.item { border:1px solid var(--border); border-radius:10px; padding:10px; background:#fff; }
+.actions { display:flex; gap:8px; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="title">Relatório • DiligenceGo</div>
+    <div class="actions">
+      <button id="email" class="btn">Email</button>
+      <button id="whats" class="btn">WhatsApp</button>
+    </div>
+  </div>
+  <div id="cabecalho" class="card"></div>
+  <div class="grid">
+    <div class="indicator" id="indLitigios"></div>
+    <div class="indicator" id="indSancoes"></div>
+  </div>
+  <div class="card">
+    <div style="font-weight:700;">Processos</div>
+    <div id="lista" class="list"></div>
+  </div>
+</div>
+<script>
+function formatCNPJ(raw){var v=(raw||'').replace(/\D/g,'').slice(0,14);var p=[];if(v.length>0)p.push(v.slice(0,2));if(v.length>2)p.push(v.slice(2,5));if(v.length>5)p.push(v.slice(5,8));var rest='';if(v.length>8)rest=v.slice(8,12);var end='';if(v.length>12)end=v.slice(12,14);var f='';if(p.length)f=p[0];if(p.length>1)f+='.'+p[1];if(p.length>2)f+='.'+p[2];if(rest)f+='/'+rest;if(end)f+='-'+end;return f;}
+var cnpj = localStorage.getItem('dg:lastCNPJ')||'';
+var ano = localStorage.getItem('dg:lastYear')||'';
+var results = [];try{results=JSON.parse(localStorage.getItem('dg:lastResults')||'[]');}catch(e){}
+document.getElementById('cabecalho').innerHTML = '<div style="font-weight:700;">Empresa</div><div>CNPJ: '+formatCNPJ(cnpj)+'</div><div>Ano: '+ano+'</div>';
+var lit = results.filter(function(r){return r.tipo==='Litígios';}).length;
+var san = results.filter(function(r){return r.tipo==='Sanções';}).length;
+document.getElementById('indLitigios').innerHTML = '<div style="font-weight:700;">Litígios</div><div style="font-size:28px;">'+lit+'</div>';
+document.getElementById('indSancoes').innerHTML = '<div style="font-weight:700;">Sanções</div><div style="font-size:28px;">'+san+'</div>';
+var lista = document.getElementById('lista');
+results.forEach(function(r){
+  var el=document.createElement('div');el.className='item';
+  el.innerHTML='<div style="font-weight:700;">'+r.tipo+' • '+r.titulo+'</div><div style="font-size:12px;color:#666;">Fonte: '+r.fonte+'</div><div style="margin-top:6px;">'+r.resumo+'</div>';
+  lista.appendChild(el);
+});
+document.getElementById('email').onclick=function(){
+  var body=encodeURIComponent('Relatório DiligenceGo\\nCNPJ: '+formatCNPJ(cnpj)+'\\nAno: '+ano+'\\nItens:\\n'+results.map(function(r){return '- '+r.tipo+' • '+r.titulo;}).join('\\n'));
+  location.href='mailto:?subject=Relatório DiligenceGo&body='+body;
+};
+document.getElementById('whats').onclick=function(){
+  var text=encodeURIComponent('Relatório DiligenceGo\\nCNPJ: '+formatCNPJ(cnpj)+'\\nAno: '+ano+'\\nItens:\\n'+results.map(function(r){return '- '+r.tipo+' • '+r.titulo;}).join('\\n'));
+  location.href='https://wa.me/?text='+text;
+};
+</script>
+</body>
+</html>
