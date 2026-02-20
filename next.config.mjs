@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const basePath = process.env.BASE_PATH || '';
-const isExport = process.env.NEXT_OUTPUT === 'export';
+const isVercel = process.env.VERCEL === '1';
+const isExport = process.env.NEXT_OUTPUT === 'export' && !isVercel;
 
 const nextConfig = {
   ...(basePath ? { basePath, assetPrefix: basePath } : {}),
