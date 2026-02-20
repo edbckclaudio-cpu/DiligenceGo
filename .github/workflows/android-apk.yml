@@ -20,6 +20,32 @@ jobs:
           rm -rf out || true
       - name: Install (legacy peer deps)
         run: npm install --legacy-peer-deps
+      - name: Ensure Android project exists
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          build-tools: 34.0.0
+          components: |
+            platform-tools
+            platforms;android-34
+            build-tools;34.0.0
+      - name: Build APK Release
+        working-directory: android
+        run: |
+          ./gradlew clean
+          ./gradlew assembleRelease
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DiligenceGo-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
       - name: Prebuild check
         run: |
           echo "Android build via GitHub Actions requer pasta android/ versionada e secrets de keystore."
