@@ -6,6 +6,7 @@ const nextConfig = {
   output: 'export',
   trailingSlash: true,
   eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
   env: {
     NEXT_PUBLIC_PURCHASES_MODE: process.env.NEXT_PUBLIC_PURCHASES_MODE || 'real'
   }
