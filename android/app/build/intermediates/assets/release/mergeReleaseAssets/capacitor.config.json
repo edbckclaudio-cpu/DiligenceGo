@@ -1,0 +1,44 @@
+{
+	"appId": "com.diligencego.app",
+	"appName": "DiligenceGo",
+	"webDir": "out",
+	"bundledWebRuntime": false,
+	"server": {
+		"cleartext": true,
+		"allowNavigation": [
+			"dados.cvm.gov.br"
+		]
+	},
+	"plugins": {
+		"Filesystem": {
+			"android": {
+				"directory": "DOCUMENTS"
+			}
+		},
+		"Http": {},
+		"Browser": {},
+		"Share": {},
+		"App": {},
+		"GoogleAuth": {
+			"scopes": [
+				"profile",
+				"email"
+			],
+			"serverClientId": "1027488415010-ka6t6onl1iv6s1lptfg3obr36kj04ud9.apps.googleusercontent.com",
+			"forceCodeForRefreshToken": true
+		}
+	},
+	"android": {
+		"includePlugins": [
+			"Filesystem",
+			"Http",
+			"Browser",
+			"Share",
+			"App",
+			"GoogleAuth",
+			"Purchases",
+			"InAppPurchase"
+		],
+		"flavor": "capacitor"
+	}
+}

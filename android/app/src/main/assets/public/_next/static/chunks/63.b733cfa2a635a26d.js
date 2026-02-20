@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[63],{7063:(e,r,s)=>{s.d(r,{Browser:()=>n});let n=(0,s(2587).registerPlugin)("Browser",{web:()=>s.e(453).then(s.bind(s,5453)).then(e=>new e.BrowserWeb)})}}]);

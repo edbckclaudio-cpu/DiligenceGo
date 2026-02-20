@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DiligenceGo</string>
+    <string name="title_activity_main">DiligenceGo</string>
+    <string name="package_name">com.diligencego.app</string>
+    <string name="custom_url_scheme">com.diligencego.app</string>
+    <string name="server_client_id">1027488415010-ka6t6onl1iv6s1lptfg3obr36kj04ud9.apps.googleusercontent.com</string>
+</resources>
