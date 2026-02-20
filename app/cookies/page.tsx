@@ -1,9 +1,6 @@
+"use client";
 import Link from "next/link";
-export const metadata = {
-  title: "POLÍTICA DE COOKIES – DiligenceGo",
-  description: "Política de Cookies do DiligenceGo com detalhes sobre armazenamento local e ausência de rastreamento.",
-};
-
+import { Suspense } from "react";
 export default function CookiesPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 bg-white text-neutral-800">
@@ -22,7 +19,9 @@ export default function CookiesPage() {
         </ul>
       </div>
       <h1 className="text-2xl font-semibold mb-4">POLÍTICA DE COOKIES – DILIGENCEGO</h1>
-      <p className="text-sm text-neutral-600 mb-6">Última atualização: {new Date().toLocaleDateString("pt-BR")}</p>
+      <Suspense fallback={<p className="text-sm text-neutral-600 mb-6">Última atualização</p>}>
+        <p className="text-sm text-neutral-600 mb-6">Última atualização: {new Date().toLocaleDateString("pt-BR")}</p>
+      </Suspense>
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">1. Conceito</h2>

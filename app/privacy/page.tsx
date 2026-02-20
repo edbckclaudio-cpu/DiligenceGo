@@ -1,9 +1,6 @@
+"use client";
 import Link from "next/link";
-export const metadata = {
-  title: "POLÍTICA DE PRIVACIDADE – DiligenceGo",
-  description: "Política de Privacidade do DiligenceGo: processamento local-first, sem envio de CNPJ a servidores.",
-};
-
+import { Suspense } from "react";
 export default function PrivacyPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 bg-white text-neutral-800">
@@ -24,7 +21,9 @@ export default function PrivacyPage() {
       </div>
 
       <h1 className="text-2xl font-semibold mb-4">POLÍTICA DE PRIVACIDADE – DILIGENCEGO</h1>
-      <p className="text-sm text-neutral-600 mb-6">Última atualização: {new Date().toLocaleDateString("pt-BR")}</p>
+      <Suspense fallback={<p className="text-sm text-neutral-600 mb-6">Última atualização</p>}>
+        <p className="text-sm text-neutral-600 mb-6">Última atualização: {new Date().toLocaleDateString("pt-BR")}</p>
+      </Suspense>
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">1. Compromisso com a Privacidade</h2>

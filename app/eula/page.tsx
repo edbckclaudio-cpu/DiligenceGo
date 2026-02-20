@@ -1,9 +1,6 @@
+"use client";
 import Link from "next/link";
-export const metadata = {
-  title: "EULA – Licença de Uso – DiligenceGo",
-  description: "Contrato de Licença de Usuário Final (EULA) para o aplicativo DiligenceGo.",
-};
-
+import { Suspense } from "react";
 export default function EulaPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 bg-white text-neutral-800">
@@ -22,7 +19,9 @@ export default function EulaPage() {
         </ul>
       </div>
       <h1 className="text-2xl font-semibold mb-4">EULA – LICENÇA DE USO – DILIGENCEGO</h1>
-      <p className="text-sm text-neutral-600 mb-6">Última atualização: {new Date().toLocaleDateString("pt-BR")}</p>
+      <Suspense fallback={<p className="text-sm text-neutral-600 mb-6">Última atualização</p>}>
+        <p className="text-sm text-neutral-600 mb-6">Última atualização: {new Date().toLocaleDateString("pt-BR")}</p>
+      </Suspense>
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">1. Concessão de Licença</h2>
