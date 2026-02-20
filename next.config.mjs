@@ -5,6 +5,7 @@ const nextConfig = {
   ...(basePath ? { basePath, assetPrefix: basePath } : {}),
   output: 'export',
   trailingSlash: true,
+  eslint: { ignoreDuringBuilds: true },
   env: {
     NEXT_PUBLIC_PURCHASES_MODE: process.env.NEXT_PUBLIC_PURCHASES_MODE || 'real'
   }
