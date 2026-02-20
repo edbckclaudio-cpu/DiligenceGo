@@ -9,6 +9,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Clean cache and build dirs
+        run: |
+          rm -rf .next || true
+          rm -rf out || true
       - name: Notice
         run: |
           echo "Build de Android desativado neste repositório."
