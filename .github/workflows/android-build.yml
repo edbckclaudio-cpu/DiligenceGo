@@ -1,0 +1,17 @@
+name: Android APK/AAB (manual only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Notice
+        run: |
+          echo "Build de Android desativado neste repositório."
+          echo "Motivo: pasta android/ não está versionada (apenas build.gradle)."
+          echo "Execute o build localmente via Android Studio/Capacitor."
+          echo "Se desejar habilitar aqui, versionar android/ completo e configurar secrets de keystore."
