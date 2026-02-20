@@ -16,15 +16,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22.x"
+          node-version: "18.x"
           cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install (legacy peer deps)
+        run: npm install --legacy-peer-deps
 
-      - name: Build static web (Next.js export)
-        env:
-          NEXT_OUTPUT: export
+      - name: Build static web (copy public → out)
         run: npm run build
 
       - name: Sync Capacitor Android
