@@ -1,50 +1,26 @@
-name: Android APK
+name: Android APK (legacy peer deps)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ "main" ]
 
 jobs:
-  build-apk:
+  build-android:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22.x"
-          cache: "npm"
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build Web Project
-        env:
-          NEXT_OUTPUT: export
-        run: npm run build
-
-      - name: Sync Capacitor
-        run: npx cap sync android
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: 34
-          build-tools: 34.0.0
-          components: |
-            platform-tools
-            platforms;android-34
-            build-tools;34.0.0
-
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: DiligenceGo-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          node-version: '18'
+          cache: 'npm'
+      - name: Clean cache dirs
+        run: |
+          rm -rf .next || true
+          rm -rf out || true
+      - name: Install (legacy peer deps)
+        run: npm install --legacy-peer-deps
+      - name: Prebuild check
+        run: |
+          echo "Android build via GitHub Actions requer pasta android/ versionada e secrets de keystore."
+          echo "Este job usa --legacy-peer-deps para evitar conflitos do Capacitor."

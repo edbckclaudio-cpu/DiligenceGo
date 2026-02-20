@@ -6,8 +6,8 @@
   "description": "App DiligenceGo - parser local-first de dados CVM com Next/Capacitor",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:export": "next build",
+    "build": "npm install --legacy-peer-deps && next build",
+    "build:export": "npm install --legacy-peer-deps && next build",
     "start": "next start",
     "test": "vitest run"
   },
