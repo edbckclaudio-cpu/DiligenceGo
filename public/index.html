@@ -9,26 +9,13 @@
     .box { max-width: 640px; margin: 0 auto; text-align: center; }
     a.button { display:inline-block; padding:10px 16px; border-radius:8px; background:#0b5fff; color:#fff; text-decoration:none; }
   </style>
+  <meta name="color-scheme" content="light dark">
 </head>
 <body>
   <div class="box">
     <h1>DiligenceGo</h1>
-    <p>Redirecionando para dashboard...</p>
-    <p><small>Se não avançar em 2 segundos, clique abaixo.</small></p>
-    <p><a class="button" href="privacy.html">Abrir Política de Privacidade</a></p>
+    <p>Bem-vindo(a) à DiligenceGo</p>
+    <p><a class="button" href="privacy.html">Política de Privacidade</a></p>
   </div>
-  <script>
-    (function() {
-      try {
-        // Em ambientes file:// (Capacitor), evite caminhos absolutos.
-        // Sem build do Next, usamos páginas estáticas de public/.
-        setTimeout(function() {
-          // Como não há página /dashboard exportada no pacote estático atual,
-          // encaminhamos para privacy.html para evitar tela em branco.
-          location.href = 'privacy.html';
-        }, 1500);
-      } catch (e) {}
-    })();
-  </script>
 </body>
 </html>
