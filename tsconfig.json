@@ -8,11 +8,9 @@
     "jsx": "preserve",
     "moduleResolution": "bundler",
     "strict": true,
-    "baseUrl": "src",
+    "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "*"
-      ]
+      "@/*": ["src/*"]
     },
     "allowJs": true,
     "skipLibCheck": true,
