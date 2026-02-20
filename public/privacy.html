@@ -2,60 +2,51 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>POLÍTICA DE PRIVACIDADE – DiligenceGo</title>
-  <meta name="description" content="Política de Privacidade do DiligenceGo: processamento local-first, sem envio de CNPJ a servidores.">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Política de Privacidade – DiligenceGo</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #fff; color: #1f2937; margin: 0; }
-    main { max-width: 768px; margin: 0 auto; padding: 32px 16px; }
-    nav { color: #4b5563; margin-bottom: 16px; font-size: 0.9rem; }
-    a { color: #1d4ed8; text-decoration: underline; }
-    h1 { font-size: 1.5rem; font-weight: 600; margin: 16px 0; }
-    h2 { font-size: 1.1rem; font-weight: 600; margin-top: 24px; }
-    p { line-height: 1.6; }
-    ul.index { display: flex; flex-wrap: wrap; gap: 12px; list-style: none; padding: 0; margin: 0 0 24px 0; }
-    .muted { color: #6b7280; font-size: 0.9rem; margin-bottom: 24px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 0; background: #fff; color: #1f2937; }
+    main { max-width: 800px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 24px; margin: 0 0 16px; font-weight: 600; }
+    h2 { font-size: 18px; margin: 24px 0 8px; font-weight: 600; }
+    p { font-size: 14px; line-height: 1.6; margin: 8px 0; }
+    nav { font-size: 12px; color: #6b7280; margin-bottom: 12px; }
+    a { color: #0ea5e9; text-decoration: underline; }
+    .section { margin-top: 16px; }
   </style>
+  <meta name="robots" content="noindex">
 </head>
 <body>
   <main>
     <nav><a href="/">Início</a> / <span>Termos e Políticas</span> / <span>Privacidade</span></nav>
-    <div>
-      <div class="muted">Índice de Políticas</div>
-      <ul class="index">
-        <li><a href="/privacy.html">Privacidade</a></li>
-        <li><a href="/terms">Termos de Uso</a></li>
-        <li><a href="/cookies">Política de Cookies</a></li>
-        <li><a href="/eula">EULA</a></li>
-        <li><a href="/licenses">Licenças</a></li>
-        <li><a href="/account/delete">Excluir Conta e Dados</a></li>
-      </ul>
-    </div>
     <h1>POLÍTICA DE PRIVACIDADE – DILIGENCEGO</h1>
-    <div class="muted">Última atualização: <span id="lastUpdate"></span></div>
-    <section>
+    <p style="font-size:12px;color:#6b7280;">Última atualização: <script>document.write(new Date().toLocaleDateString("pt-BR"))</script></p>
+
+    <div class="section">
       <h2>1. Compromisso com a Privacidade</h2>
       <p>O DiligenceGo prioriza processamento local de dados (local-first). As consultas por CNPJ, bem como o parsing e a análise dos arquivos da CVM (FRE/PAS), são executados no próprio dispositivo do usuário.</p>
-    </section>
-    <section>
+    </div>
+
+    <div class="section">
       <h2>2. Dados Processados</h2>
-      <p>• CNPJ informado pelo usuário é utilizado apenas para localizar e processar dados públicos do Portal de Dados Abertos da CVM.<br>• Resultados e preferências podem ser armazenados localmente (localStorage e Cache API) para uso offline e melhoria de experiência.</p>
-    </section>
-    <section>
+      <p>- O CNPJ informado pelo usuário é utilizado apenas para localizar e processar dados públicos do Portal de Dados Abertos da CVM.</p>
+      <p>- Resultados e preferências podem ser armazenados localmente (localStorage e Cache API) para uso offline e melhoria de experiência.</p>
+    </div>
+
+    <div class="section">
       <h2>3. Não Enviamos CNPJ a Servidores</h2>
       <p>Não há envio do CNPJ ou dos resultados das consultas para servidores externos. A aplicação evita o uso de cookies de rastreamento e não realiza perfilamento.</p>
-    </section>
-    <section>
+    </div>
+
+    <div class="section">
       <h2>4. Direitos do Usuário</h2>
-      <p>O usuário pode limpar dados locais, realizar logout, e optar por excluir conta e dados. Consulte a página de exclusão para instruções.</p>
-    </section>
-    <section>
+      <p>O usuário pode limpar dados locais, realizar logout e optar por excluir conta e dados. Consulte a página de exclusão para instruções.</p>
+    </div>
+
+    <div class="section">
       <h2>5. Contato</h2>
       <p>Para dúvidas ou solicitações, utilize o menu “Suporte / Fale Conosco” na aplicação.</p>
-    </section>
+    </div>
   </main>
-  <script>
-    try { document.getElementById('lastUpdate').textContent = new Date().toLocaleDateString('pt-BR'); } catch(e) {}
-  </script>
 </body>
 </html>

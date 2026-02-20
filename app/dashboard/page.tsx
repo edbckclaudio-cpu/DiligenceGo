@@ -2,12 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Menu, User, BadgeCheck, Crown, FileText, ScrollText, Cookie, LifeBuoy, KeyRound, Trash2 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DataCard } from "@/components/cvm/DataCard";
-import { ExportButton } from "@/components/cvm/ExportButton";
-import { SearchForm } from "@/components/cvm/SearchForm";
-import { useCvmData } from "@/hooks/useCvmData";
-import { clearAllMemory, loadReportLocal } from "@/lib/cvm-parser";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { DataCard } from "../../components/cvm/DataCard";
+import { ExportButton } from "../../components/cvm/ExportButton";
+import { SearchForm } from "../../components/cvm/SearchForm";
+import { useCvmData } from "../../hooks/useCvmData";
+import { clearAllMemory, loadReportLocal } from "../../lib/cvm-parser";
 
 export default function Dashboard() {
   const router = useRouter();
