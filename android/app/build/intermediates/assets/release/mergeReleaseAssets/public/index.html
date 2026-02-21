@@ -41,6 +41,9 @@
     .policy a { color: var(--blue); text-decoration:none; }
   </style>
   <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='8' fill='%232563eb'/><text x='8' y='11' font-size='9' text-anchor='middle' fill='white'>DG</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -55,7 +58,7 @@
     <div class="card">
       <div class="label">Consulta Due Diligence</div>
       <input id="cnpj" class="input" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" maxlength="18">
-      <button class="btn primary" id="consultar">
+      <button class="btn primary" id="consultarBtn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="white" stroke-width="2"/><path d="M20 20l-3.5-3.5" stroke="white" stroke-width="2"/></svg>
         Consultar
       </button>
@@ -119,21 +122,127 @@
       return formatted;
     }
 
-    cnpjInput.addEventListener('input', function(e){
-      var raw = cnpjInput.value.replace(/\\D/g,'').slice(0,14);
+    cnpjInput.addEventListener('input', function(){
+      var prev = cnpjInput.value;
+      var prevCaret = cnpjInput.selectionStart || 0;
+      var raw = prev.replace(/\D/g,'').slice(0,14);
       var formatted = formatCNPJ(raw);
-      var pos = cnpjInput.selectionStart;
+      var caretRaw = prev.slice(0, prevCaret).replace(/\D/g,'').length;
+      if (caretRaw > raw.length) caretRaw = raw.length;
+      var add = 0; if (caretRaw >= 2) add++; if (caretRaw >= 5) add++; if (caretRaw >= 8) add++; if (caretRaw >= 12) add++;
+      var newCaret = caretRaw + add;
       cnpjInput.value = formatted;
-      cnpjInput.setSelectionRange(formatted.length, formatted.length);
-      cnpjAtual.textContent = formatCNPJ(raw);
+      cnpjInput.setSelectionRange(newCaret, newCaret);
+      cnpjAtual.textContent = formatted;
     });
 
-    document.getElementById('consultar').addEventListener('click', function(){
+    document.getElementById('consultarBtn').addEventListener('click', async function(){
       var raw = cnpjInput.value.replace(/\\D/g,'');
-      if (raw.length !== 14) { alert('CNPJ inválido.'); return; }
+      if (raw.length < 14) { alert('CNPJ inválido.'); return; }
       cnpjAtual.textContent = formatCNPJ(raw);
-      conteudo.textContent = 'Nenhum dado de litígios.';
       try { localStorage.setItem('dg:lastCNPJ', raw); localStorage.setItem('dg:lastYear', anoSelect.value); } catch(e){}
+      conteudo.textContent = 'Consultando...';
+      try {
+        var year = anoSelect.value;
+        var url = 'https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_' + year + '.zip';
+        var proxyUrl = '/api/dfp/' + year;
+        var protocol = (typeof location !== 'undefined' ? location.protocol : '');
+        var isNative = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+        var isCapOrFile = protocol === 'capacitor:' || protocol === 'file:';
+        var blob = null;
+        try {
+          var capHttp = window.CapacitorHttp || (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Http);
+          if (capHttp && typeof capHttp.get === 'function') {
+            var r = await capHttp.get({ url: url, responseType: 'arraybuffer', connectTimeout: 20000, readTimeout: 60000 });
+            var status = (r && r.status) || 0;
+            var data = r && (r.data != null ? r.data : (r.result && r.result.data));
+            if (status >= 200 && status < 300 && data != null) {
+              var buf;
+              if (data instanceof ArrayBuffer) {
+                buf = data;
+              } else if (typeof data === 'string') {
+                var b = atob(data);
+                var ua = new Uint8Array(b.length);
+                for (var i = 0; i < b.length; i++) ua[i] = b.charCodeAt(i);
+                buf = ua.buffer;
+              } else if (data && typeof data.data === 'string') {
+                var b2 = atob(data.data);
+                var ua2 = new Uint8Array(b2.length);
+                for (var j = 0; j < b2.length; j++) ua2[j] = b2.charCodeAt(j);
+                buf = ua2.buffer;
+              } else {
+                throw new Error('Resposta nativa inesperada');
+              }
+              blob = new Blob([buf], { type: 'application/zip' });
+            } else {
+              throw new Error('HTTP nativo falhou ' + status);
+            }
+          } else {
+            var chosen = (isNative || isCapOrFile) ? url : proxyUrl;
+            var resp = await fetch(chosen, { cache: 'no-store', redirect: 'follow' });
+            if (!resp.ok && chosen !== url) {
+              throw new Error('Proxy indisponível');
+            }
+            if (!resp.ok) throw new Error('DFP indisponível');
+            blob = await resp.blob();
+          }
+        } catch (netErr) {
+          conteudo.textContent = 'Erro na consulta local.';
+          return;
+        }
+        var zip = await JSZip.loadAsync(blob);
+        var names = Object.keys(zip.files).filter(function(n){ return n.toLowerCase().endsWith('.csv'); });
+        var results = [];
+        for (var i=0;i<names.length;i++) {
+          var name = names[i];
+          var ab = await zip.files[name].async('arraybuffer');
+          var dec = new TextDecoder('iso-8859-1');
+          var text = dec.decode(new Uint8Array(ab));
+          var parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+          var rows = parsed.data || [];
+          var cnpjKey = null;
+          if (rows.length) {
+            var keys = Object.keys(rows[0]);
+            for (var k=0;k<keys.length;k++){ if (/cnpj/i.test(keys[k])) { cnpjKey = keys[k]; break; } }
+          }
+          var filtered = rows.filter(function(r){ return ((r[cnpjKey]||'').replace(/\D/g,'')) === raw; });
+          filtered.slice(0,50).forEach(function(r){
+            var title = r['DENOM_CIA'] || r['NOME'] || r['RAZAO_SOCIAL'] || 'Registro';
+            var resumo = '';
+            var showKeys = Object.keys(r).slice(0,6);
+            for (var j=0;j<showKeys.length;j++){ var key = showKeys[j]; var val = r[key]; resumo += (j? ' | ':'') + key + ': ' + val; }
+            results.push({ id: name+'-'+Math.random().toString(36).slice(2), tipo: 'Governança', titulo: title, fonte: 'CVM DFP '+year, resumo: resumo });
+          });
+          parsed = null; rows = null; text = null; ab = null;
+        }
+        results.sort(function(a,b){ return String(a.titulo||'').localeCompare(String(b.titulo||'')); });
+        lastResults = results;
+        lista.innerHTML = '';
+        if (!results.length) { conteudo.textContent = 'Sem resultados para este CNPJ no DFP '+year; } else { conteudo.textContent = ''; }
+        results.forEach(function(r){
+          var el = document.createElement('div');
+          el.className = 'item';
+          el.innerHTML = '<div style="font-weight:700;">'+r.tipo+' • '+r.titulo+'</div><div style="font-size:12px;color:#666;">Fonte: '+r.fonte+'</div><div style="margin-top:6px;">'+r.resumo+'</div>';
+          el.addEventListener('click', function(){
+            document.querySelectorAll('.item').forEach(function(i){ i.classList.remove('selected'); });
+            el.classList.add('selected');
+            modalCard.innerHTML = '<div style="font-weight:700;font-size:18px;">'+r.titulo+'</div><div style="margin-top:6px;">Tipo: '+r.tipo+'</div><div>Fonte: '+r.fonte+'</div><div style="margin-top:8px;">'+r.resumo+'</div><div class="modal-actions"><button id="mEmail" class="btn">Email</button><button id="mWhats" class="btn">WhatsApp</button></div>';
+            modal.classList.add('show');
+            document.getElementById('mEmail').onclick = function(){
+              var body = encodeURIComponent(r.tipo+' - '+r.titulo+'\nFonte: '+r.fonte+'\n'+r.resumo);
+              location.href = 'mailto:?subject=DiligenceGo&body='+body;
+            };
+            document.getElementById('mWhats').onclick = function(){
+              var text = encodeURIComponent(r.tipo+' - '+r.titulo+'\nFonte: '+r.fonte+'\n'+r.resumo);
+              location.href = 'https://wa.me/?text='+text;
+            };
+          });
+          lista.appendChild(el);
+        });
+        shareAll.style.display = 'flex';
+      } catch(e) {
+        conteudo.textContent = 'Erro na consulta local.';
+      }
     });
 
     anoSelect.addEventListener('change', function(){
@@ -165,43 +274,6 @@
       } catch(e){}
     })();
 
-    function queryData(rawCnpj, year, filters) {
-      var items = [];
-      if (filters.has('governanca')) items.push({id:'gov-'+year, tipo:'Governança', titulo:'Conselho atualizado', fonte:'CVM', resumo:'Estrutura societária revisada '+year});
-      if (filters.has('litigios')) items.push({id:'lit-'+year, tipo:'Litígios', titulo:'Ação Civil Nº '+year+'-01', fonte:'TJ', resumo:'Processo em andamento'});
-      if (filters.has('sancoes')) items.push({id:'san-'+year, tipo:'Sanções', titulo:'Multa administrativa', fonte:'CVM', resumo:'Auto de infração convertido em multa'});
-      return items;
-    }
-
-    document.getElementById('consultar').addEventListener('click', function(){
-      var raw = cnpjInput.value.replace(/\\D/g,'');
-      if (raw.length !== 14) { alert('CNPJ inválido.'); return; }
-      var year = anoSelect.value;
-      var results = queryData(raw, year, tags);
-      lastResults = results;
-      lista.innerHTML = '';
-      results.forEach(function(r){
-        var el = document.createElement('div');
-        el.className = 'item';
-        el.innerHTML = '<div style=\"font-weight:700;\">'+r.tipo+' • '+r.titulo+'</div><div style=\"font-size:12px;color:#666;\">Fonte: '+r.fonte+'</div><div style=\"margin-top:6px;\">'+r.resumo+'</div>';
-        el.addEventListener('click', function(){
-          document.querySelectorAll('.item').forEach(function(i){ i.classList.remove('selected'); });
-          el.classList.add('selected');
-          modalCard.innerHTML = '<div style=\"font-weight:700;font-size:18px;\">'+r.titulo+'</div><div style=\"margin-top:6px;\">Tipo: '+r.tipo+'</div><div>Fonte: '+r.fonte+'</div><div style=\"margin-top:8px;\">'+r.resumo+'</div><div class=\"modal-actions\"><button id=\"mEmail\" class=\"btn\">Email</button><button id=\"mWhats\" class=\"btn\">WhatsApp</button></div>';
-          modal.classList.add('show');
-          document.getElementById('mEmail').onclick = function(){
-            var body = encodeURIComponent(r.tipo+' - '+r.titulo+'\\nFonte: '+r.fonte+'\\n'+r.resumo);
-            location.href = 'mailto:?subject=DiligenceGo&body='+body;
-          };
-          document.getElementById('mWhats').onclick = function(){
-            var text = encodeURIComponent(r.tipo+' - '+r.titulo+'\\nFonte: '+r.fonte+'\\n'+r.resumo);
-            location.href = 'https://wa.me/?text='+text;
-          };
-        });
-        lista.appendChild(el);
-      });
-      shareAll.style.display = 'flex';
-    });
 
     shareAll.addEventListener('touchstart', function(e){
       if (e.target.classList.contains('tooltip')) { e.target.setAttribute('data-show','1'); setTimeout(function(){ e.target.removeAttribute('data-show'); }, 1500); }
